@@ -24,6 +24,27 @@ Write an ADR when a decision:
 ADRs are immutable once accepted. To change a decision, write a new ADR and mark
 the old one as **Superseded by ADR-XXXX** (linking both ways).
 
+## Ordering and dependencies
+
+ADR numbers are assigned in dependency order: an ADR may build on any ADR with
+a lower number and on none with a higher one. This keeps the log readable from
+the top down, and it holds even when several ADRs are written in the same
+sitting.
+
+- **Context, Decision, Options and Consequences** may rely only on facts,
+  requirements, and earlier ADRs. A later decision is never a premise. If a
+  later decision is anticipated, state the underlying requirement instead
+  (for example "hosting that scales to zero is under consideration, so cold
+  start matters", not "we run on Container Apps").
+- **Follow-up** is the only section that may point forward, as "this decision
+  requires deciding X", with the ADR number once it exists.
+- **References** may list later ADRs that build on this one. Adding such a
+  link to an accepted ADR is permitted, in the same way as supersession
+  links.
+- When a batch of ADRs is written together, order it by dependency. A genuine
+  cycle between two ADRs means they are one decision, or that the shared
+  premise should be stated as a requirement in the earlier one.
+
 ## Statuses
 
 | Status     | Meaning                                              |
@@ -38,9 +59,11 @@ the old one as **Superseded by ADR-XXXX** (linking both ways).
 | ADR                                                  | Title                           | Status   | Date       |
 |------------------------------------------------------|---------------------------------|----------|------------|
 | [0001](0001-record-architecture-decisions.md)        | Record architecture decisions   | Accepted | 2026-09-21 |
-| [0002](0002-use-csharp-and-dotnet-for-the-backend.md) | Use C# and .NET for the backend | Proposed | 2026-09-21 |
-| [0003](0003-use-clean-architecture.md)               | Use Clean Architecture          | Proposed | 2026-09-21 |
-| [0004](0004-use-a-relational-database.md)            | Use a relational database       | Proposed | 2026-09-21 |
-| [0005](0005-use-postgresql.md)                       | Use PostgreSQL                  | Proposed | 2026-09-21 |
-| [0006](0006-use-entity-framework-core-for-data-access.md) | Use Entity Framework Core for data access | Proposed | 2026-09-21 |
-| [0007](0007-deploy-with-docker-compose-on-the-homelab.md) | Deploy with Docker Compose on the homelab | Proposed | 2026-09-21 |
+| [0002](0002-use-csharp-and-dotnet-for-the-backend.md) | Use C# and .NET for the backend | Accepted | 2026-10-06 |
+| [0003](0003-use-clean-architecture.md)               | Use Clean Architecture          | Accepted | 2026-10-06 |
+| [0004](0004-use-a-relational-database.md)            | Use a relational database       | Accepted | 2026-10-06 |
+| [0005](0005-model-bookings-as-non-blocking-stays.md) | Model bookings as non-blocking stays | Accepted | 2026-10-06 |
+| [0006](0006-deploy-to-azure-free-tiers-with-homelab-staging.md) | Deploy to Azure free tiers with the homelab as staging | Accepted | 2026-10-06 |
+| [0007](0007-keep-the-deployment-target-portable.md) | Keep the deployment portable between Azure and the homelab | Accepted | 2026-10-06 |
+| [0008](0008-use-azure-sql-database.md)               | Use Azure SQL Database          | Accepted | 2026-10-06 |
+| [0009](0009-use-entity-framework-core-for-data-access.md) | Use Entity Framework Core for data access | Accepted | 2026-10-06 |

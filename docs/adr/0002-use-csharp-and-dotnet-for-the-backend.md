@@ -1,7 +1,7 @@
 # ADR-0002: Use C# and .NET for the backend
 
-- **Status:** Proposed
-- **Date:** 2026-09-21
+- **Status:** Accepted
+- **Date:** 2026-10-06
 - **Deciders:** Gustav Gybäck (sole developer)
 
 ## Context
@@ -19,8 +19,9 @@ process is documented publicly as a portfolio piece. The forces at play are:
   handful of relatives, not thousands of concurrent users.
 - The cost-splitting and recurring-maintenance features involve real domain
   logic that benefits from a statically typed language and a mature ORM.
-- The system runs as a Docker container on a homelab VM, so the runtime must
-  produce lean, self-contained Linux images.
+- The system must ship as a Linux container, and hosting options that scale
+  to zero when idle are under consideration, so the runtime must produce
+  lean, self-contained images that start quickly from cold.
 - Long-term maintainability by one person favours a stable, well-documented
   ecosystem over the newest framework.
 
@@ -69,15 +70,17 @@ long support lifecycle.
   developer is working in their primary language.
 - ASP.NET Core provides routing, dependency injection, configuration,
   OpenAPI, authentication and health checks out of the box.
-- Straightforward path to Clean Architecture (see ADR-0003) with multiple
-  projects in one solution.
+- Multi-project solutions are a first-class concept, so a layered or modular
+  structure can be enforced through project references if one is chosen.
 
 ### Negative
 
 - Frontend and backend use different languages, so API types must be shared
   via an OpenAPI-generated client rather than a common package.
 - Container images are larger than Go or Node equivalents (roughly 100 MB+
-  for the ASP.NET runtime base image). Acceptable for a homelab.
+  for the ASP.NET runtime base image), and cold start from a scaled-to-zero
+  container takes a few seconds. Acceptable for this audience; ReadyToRun
+  publishing is available if it becomes a problem.
 
 ### Follow-up
 
@@ -87,6 +90,4 @@ long support lifecycle.
 
 ## References
 
-- [ADR-0003: Use Clean Architecture](0003-use-clean-architecture.md)
-- [ADR-0007: Deploy with Docker Compose on the homelab](0007-deploy-with-docker-compose-on-the-homelab.md)
 - [.NET support policy](https://dotnet.microsoft.com/platform/support/policy/dotnet-core)
