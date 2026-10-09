@@ -72,6 +72,7 @@ sitting.
 | [0009](0009-use-entity-framework-core-for-data-access.md) | Use Entity Framework Core for data access | Accepted | 2026-10-06 |
 | [0010](0010-use-terraform-for-infrastructure-as-code.md) | Use Terraform for infrastructure as code | Accepted | 2026-10-06 |
 | [0011](0011-use-hand-rolled-command-and-query-handlers.md) | Use hand-rolled command and query handlers | Accepted | 2026-10-09 |
+| [0012](0012-target-the-latest-lts-release-of-dotnet.md) | Target the latest LTS release of .NET | Accepted | 2026-10-09 |
 
 ## Follow-ups
 
