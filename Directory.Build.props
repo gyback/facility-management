@@ -1,0 +1,10 @@
+<Project>
+
+    <!-- Target framework for every project; see ADR-0012 before changing it. -->
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+    </PropertyGroup>
+
+</Project>
