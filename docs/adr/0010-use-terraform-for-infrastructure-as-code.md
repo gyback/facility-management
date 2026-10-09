@@ -1,7 +1,7 @@
 # ADR-0010: Use Terraform for infrastructure as code
 
 - **Status:** Accepted
-- **Date:** 2026-10-06
+- **Date:** 2026-10-09
 - **Deciders:** Gustav Gybäck (sole developer)
 
 ## Context
