@@ -20,6 +20,9 @@ Write an ADR when a decision:
 2. Fill in the sections and set the status to **Proposed**.
 3. Open a PR; discuss and refine the ADR in review.
 4. When merged, set the status to **Accepted** and add it to the index below.
+5. Open an issue for each item in its Follow-up section that is not already
+   tracked (see [Follow-ups](#follow-ups)). If the ADR resolves an open
+   `adr-needed` issue, close it from the PR with `Closes #N`.
 
 ADRs are immutable once accepted. To change a decision, write a new ADR and mark
 the old one as **Superseded by ADR-XXXX** (linking both ways).
@@ -67,3 +70,13 @@ sitting.
 | [0007](0007-keep-the-deployment-target-portable.md) | Keep the deployment portable between Azure and the homelab | Accepted | 2026-10-06 |
 | [0008](0008-use-azure-sql-database.md)               | Use Azure SQL Database          | Accepted | 2026-10-06 |
 | [0009](0009-use-entity-framework-core-for-data-access.md) | Use Entity Framework Core for data access | Accepted | 2026-10-06 |
+
+## Follow-ups
+
+Follow-ups from accepted ADRs are tracked as GitHub issues rather than in the
+ADRs themselves, which stay immutable. Each issue names the ADR it came from.
+
+- [Decisions to record](https://github.com/gyback/facility-management/issues?q=is%3Aissue+is%3Aopen+label%3Aadr-needed)
+  (`adr-needed`): decisions that need their own ADR.
+- [Implementation tasks](https://github.com/gyback/facility-management/issues?q=is%3Aissue+is%3Aopen+label%3Aadr-follow-up)
+  (`adr-follow-up`): work an accepted ADR requires.
