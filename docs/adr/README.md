@@ -70,6 +70,7 @@ sitting.
 | [0007](0007-keep-the-deployment-target-portable.md) | Keep the deployment portable between Azure and the homelab | Accepted | 2026-10-06 |
 | [0008](0008-use-azure-sql-database.md)               | Use Azure SQL Database          | Accepted | 2026-10-06 |
 | [0009](0009-use-entity-framework-core-for-data-access.md) | Use Entity Framework Core for data access | Accepted | 2026-10-06 |
+| [0010](0010-use-terraform-for-infrastructure-as-code.md) | Use Terraform for infrastructure as code | Accepted | 2026-10-06 |
 
 ## Follow-ups
 

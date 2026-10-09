@@ -1,6 +1,6 @@
 # ADR-0010: Use Terraform for infrastructure as code
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-06
 - **Deciders:** Gustav Gybäck (sole developer)
 
@@ -152,7 +152,7 @@ We will use Terraform to define and provision all Azure infrastructure.
 ### Follow-up
 
 - Create the bootstrap configuration for the state storage account and the
-  GitHub Actions identity, and document how to run it.
+  GitHub Actions identity, and document how to run it (tracked as FM-23).
 - Provision the resource group, Container Apps environment and app, Azure
   SQL Database free offer, Key Vault, Static Web App, Application Insights
   and Log Analytics workspace from `infra/` (tracked as FM-13).
