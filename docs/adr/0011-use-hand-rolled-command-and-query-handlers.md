@@ -126,10 +126,13 @@ project, with no mediator library.
 ### Follow-up
 
 - Add the command/query contracts, the unit type, and `AddApplication()`
-  registration to the Application project.
+  registration to the Application project
+  ([#25](https://github.com/gyback/facility-management/issues/25)).
 - Implement the validation, logging and transaction decorators, and the
-  registration tests.
-- Decide how domain events are dispatched once the first feature needs them.
+  registration tests
+  ([#26](https://github.com/gyback/facility-management/issues/26)).
+- Decide how domain events are dispatched once the first feature needs them
+  ([#27](https://github.com/gyback/facility-management/issues/27)).
 
 ## References
 
