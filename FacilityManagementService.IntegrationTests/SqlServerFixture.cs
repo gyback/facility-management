@@ -47,11 +47,21 @@ public sealed class SqlServerFixture : IAsyncLifetime
 
         var database = new TestDatabase<TContext>(options, createContext);
 
-        await using var context = database.CreateContext();
+        try
+        {
+            await using var context = database.CreateContext();
 
-        // The same call the migration entry point (#11) makes: it creates the database
-        // if it does not exist and applies every pending migration, never EnsureCreated.
-        await context.Database.MigrateAsync(cancellationToken);
+            // The same call the migration entry point (#11) makes: it creates the database
+            // if it does not exist and applies every pending migration, never EnsureCreated.
+            await context.Database.MigrateAsync(cancellationToken);
+        }
+        catch
+        {
+            // xUnit does not dispose a test class whose InitializeAsync throws, so nothing
+            // else would drop a database left half-migrated.
+            await database.DisposeAsync();
+            throw;
+        }
 
         return database;
     }
