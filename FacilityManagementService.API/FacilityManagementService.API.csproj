@@ -14,4 +14,9 @@
       </Content>
     </ItemGroup>
 
+    <ItemGroup>
+        <ProjectReference Include="..\FacilityManagementService.Application\FacilityManagementService.Application.csproj" />
+        <ProjectReference Include="..\FacilityManagementService.Infrastructure\FacilityManagementService.Infrastructure.csproj" />
+    </ItemGroup>
+
 </Project>
