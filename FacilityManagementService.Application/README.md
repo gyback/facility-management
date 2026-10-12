@@ -41,6 +41,11 @@ internal sealed class CreateStayHandler(/* dependencies */) : ICommandHandler<Cr
   `internal`; nothing else needs registering.
 - Registration fails at startup if two handlers handle the same command or
   query. A test asserts that every command and query has exactly one handler.
+- Only the handler interface can be injected; the handler class itself is not
+  resolvable, so nothing can bypass the decorators.
+- Handlers and validators cannot be open generic classes, and a validator must
+  validate the concrete command or query (not an interface it implements):
+  validators run only for the exact message type. Registration fails otherwise.
 
 ## Decorators
 
@@ -64,8 +69,10 @@ contain only the use case itself. The order is fixed in
 - **Transaction** runs the command handler through `IUnitOfWork`, which saves
   and commits the handler's changes, or rolls back if it throws. Command
   handlers therefore do not call `SaveChanges` themselves. `IUnitOfWork` is
-  implemented in Infrastructure; resolving a command handler fails until one
-  is registered.
+  implemented in Infrastructure, and the container fails to build until one is
+  registered. `IUnitOfWork` may re-run a handler to retry a transient database
+  failure, so a command handler must keep all its writes in the `DbContext`
+  (no e-mails, HTTP calls or other side effects that cannot be repeated).
 
 ```csharp
 internal sealed class CreateStayValidator : IValidator<CreateStay>

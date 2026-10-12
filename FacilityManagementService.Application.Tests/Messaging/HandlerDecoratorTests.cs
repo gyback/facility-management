@@ -78,6 +78,21 @@ public sealed class HandlerDecoratorTests : IDisposable
     }
 
     [Fact]
+    public async Task A_cancelled_command_is_rolled_back_and_logged_as_information()
+    {
+        var handler = Resolve<ICommandHandler<CreateThing, Guid>>();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            handler.HandleAsync(new CreateThing("Sauna"), new CancellationToken(canceled: true)));
+
+        Assert.Equal(["validate", "begin", "handle", "rollback"], Journal);
+        var log = Assert.Single(Logs);
+        Assert.Equal(LogLevel.Information, log.Level);
+        Assert.Null(log.Exception);
+        Assert.StartsWith($"Cancelled {nameof(CreateThing)} after ", log.Message);
+    }
+
+    [Fact]
     public async Task A_valid_query_is_validated_and_handled_without_a_transaction()
     {
         var result = await Resolve<IQueryHandler<GetThing, string>>().HandleAsync(new GetThing("Sauna"), TestContext.Current.CancellationToken);
@@ -107,5 +122,13 @@ public sealed class HandlerDecoratorTests : IDisposable
         await Resolve<ICommandHandler<CreateThing, Guid>>().HandleAsync(new CreateThing("Secret sauna"), TestContext.Current.CancellationToken);
 
         Assert.DoesNotContain(Logs, log => log.Message.Contains("Secret"));
+    }
+
+    [Fact]
+    public void The_validation_exception_message_does_not_contain_the_error_messages()
+    {
+        var exception = new ValidationException([new ValidationError("Email", "'secret@example.com' is invalid.")]);
+
+        Assert.Equal("Validation failed with 1 errors.", exception.Message);
     }
 }

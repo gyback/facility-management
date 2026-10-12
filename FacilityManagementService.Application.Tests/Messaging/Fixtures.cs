@@ -19,6 +19,7 @@ internal sealed class CreateThingHandler(Journal journal) : ICommandHandler<Crea
     public Task<Guid> HandleAsync(CreateThing command, CancellationToken cancellationToken = default)
     {
         journal.Entries.Add("handle");
+        cancellationToken.ThrowIfCancellationRequested();
 
         return command.Name == "explode"
             ? throw new InvalidOperationException("Boom.")
@@ -106,3 +107,32 @@ internal sealed class OtherRenameThingHandler : ICommandHandler<RenameThing, Uni
 }
 
 internal sealed record Unhandled : IQuery<int>;
+
+internal sealed record GetGeneric<T> : IQuery<int>;
+
+internal sealed class GenericHandler<T> : IQueryHandler<GetGeneric<T>, int>
+{
+    public Task<int> HandleAsync(GetGeneric<T> query, CancellationToken cancellationToken = default) =>
+        Task.FromResult(0);
+}
+
+internal sealed class AnyMessageValidator<T> : IValidator<T>
+{
+    public IEnumerable<ValidationError> Validate(T instance) => [];
+}
+
+internal interface INamed
+{
+    string Name { get; }
+}
+
+internal sealed class NamedValidator : IValidator<INamed>
+{
+    public IEnumerable<ValidationError> Validate(INamed instance) => [];
+}
+
+internal readonly record struct StructRenameThingHandler : ICommandHandler<RenameThing, Unit>
+{
+    public Task<Unit> HandleAsync(RenameThing command, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Unit.Value);
+}

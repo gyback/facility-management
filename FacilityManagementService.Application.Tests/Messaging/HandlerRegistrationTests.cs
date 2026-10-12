@@ -1,6 +1,7 @@
 using FacilityManagementService.Application.Messaging;
 using FacilityManagementService.Application.Messaging.Decorators;
 using FacilityManagementService.Application.Persistence;
+using FacilityManagementService.Application.Validation;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FacilityManagementService.Application.Tests.Messaging;
@@ -21,7 +22,7 @@ public sealed class HandlerRegistrationTests
         Type[] types =
         [
             typeof(RenameThing), typeof(CountThings), typeof(Unhandled),
-            typeof(ThingsHandler), typeof(OtherRenameThingHandler),
+            typeof(ThingsHandler), typeof(OtherRenameThingHandler), typeof(StructRenameThingHandler),
         ];
 
         var problems = FindMessagesWithoutExactlyOneHandler(types);
@@ -89,6 +90,81 @@ public sealed class HandlerRegistrationTests
             second.ServiceProvider.GetRequiredService<ICommandHandler<CreateThing, Guid>>());
     }
 
+    [Fact]
+    public void A_missing_unit_of_work_fails_when_the_container_is_built()
+    {
+        var services = new ServiceCollection()
+            .AddFakeLogging()
+            .AddSingleton<Journal>()
+            .AddHandlers([typeof(CreateThingHandler)]);
+
+        var exception = Assert.Throws<AggregateException>(() =>
+            services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true }));
+
+        Assert.Contains(nameof(IUnitOfWork), exception.Message);
+    }
+
+    [Fact]
+    public void The_handler_class_cannot_be_resolved_without_its_decorators()
+    {
+        using var provider = BuildProvider(typeof(CreateThingHandler));
+        using var scope = provider.CreateScope();
+
+        Assert.Null(scope.ServiceProvider.GetService<CreateThingHandler>());
+    }
+
+    [Fact]
+    public async Task Registering_the_same_handlers_and_validators_twice_registers_them_once()
+    {
+        Type[] types = [typeof(ThingsHandler), typeof(CreateThingHandler), typeof(CreateThingValidator)];
+        using var provider = new ServiceCollection()
+            .AddFakeLogging()
+            .AddSingleton<Journal>()
+            .AddScoped<IUnitOfWork, RecordingUnitOfWork>()
+            .AddValidators(types).AddHandlers(types)
+            .AddValidators(types).AddHandlers(types)
+            .BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
+        using var scope = provider.CreateScope();
+
+        Assert.Single(scope.ServiceProvider.GetServices<ICommandHandler<RenameThing, Unit>>());
+        var exception = await Assert.ThrowsAsync<ValidationException>(() =>
+            scope.ServiceProvider.GetRequiredService<ICommandHandler<CreateThing, Guid>>()
+                .HandleAsync(new CreateThing(""), TestContext.Current.CancellationToken));
+        Assert.Single(exception.Errors);
+        Assert.Equal(["validate"], provider.GetRequiredService<Journal>().Entries);
+    }
+
+    [Fact]
+    public void A_second_handler_for_an_already_registered_message_is_rejected()
+    {
+        var services = new ServiceCollection().AddHandlers([typeof(ThingsHandler)]);
+
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            services.AddHandlers([typeof(OtherRenameThingHandler)]));
+
+        Assert.Contains(nameof(OtherRenameThingHandler), exception.Message);
+    }
+
+    [Theory]
+    [InlineData(typeof(AnyMessageValidator<>))]
+    [InlineData(typeof(NamedValidator))]
+    public void Validators_that_would_never_run_are_rejected(Type validator)
+    {
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            new ServiceCollection().AddValidators([validator]));
+
+        Assert.Contains(validator.Name, exception.Message);
+    }
+
+    [Fact]
+    public void Open_generic_handlers_are_rejected()
+    {
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            new ServiceCollection().AddHandlers([typeof(GenericHandler<>)]));
+
+        Assert.Contains(typeof(GenericHandler<>).Name, exception.Message);
+    }
+
     internal static ServiceProvider BuildProvider(params Type[] types) =>
         new ServiceCollection()
             .AddFakeLogging()
@@ -100,15 +176,17 @@ public sealed class HandlerRegistrationTests
 
     /// <summary>
     /// For every concrete command and query in <paramref name="types"/>, checks that exactly
-    /// one concrete class in <paramref name="types"/> handles it.
+    /// one handler in <paramref name="types"/>, as found by <see cref="DependencyInjection.AddHandlers"/>,
+    /// handles it.
     /// </summary>
     private static List<string> FindMessagesWithoutExactlyOneHandler(IReadOnlyCollection<Type> types)
     {
-        var concrete = types
-            .Where(type => type is { IsAbstract: false, IsInterface: false, IsGenericTypeDefinition: false })
+        var handlers = DependencyInjection
+            .FindImplementations(types, DependencyInjection.IsHandlerInterface)
             .ToList();
 
-        return concrete
+        return types
+            .Where(type => type is { IsAbstract: false, IsInterface: false, IsGenericTypeDefinition: false })
             .SelectMany(message => message.GetInterfaces()
                 .Where(type => type.IsGenericType)
                 .Select(type => type.GetGenericTypeDefinition() switch
@@ -120,9 +198,9 @@ public sealed class HandlerRegistrationTests
                     _ => null,
                 })
                 .OfType<Type>()
-                .Select(handlerInterface => (Message: message, Handlers: concrete
-                    .Where(handlerInterface.IsAssignableFrom)
-                    .Select(handler => handler.Name)
+                .Select(handlerInterface => (Message: message, Handlers: handlers
+                    .Where(handler => handler.Service == handlerInterface)
+                    .Select(handler => handler.Implementation.Name)
                     .ToList())))
             .Where(entry => entry.Handlers.Count != 1)
             .Select(entry =>

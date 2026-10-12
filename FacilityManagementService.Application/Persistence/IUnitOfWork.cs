@@ -14,6 +14,11 @@ public interface IUnitOfWork
     /// <remarks>
     /// The operation is a delegate so the implementation can re-run it as a whole,
     /// e.g. under an EF Core execution strategy that retries transient failures.
+    /// The operation runs on the same scoped handler and <c>DbContext</c> each time, so
+    /// an implementation that retries must discard the failed attempt's tracked changes
+    /// (<c>ChangeTracker.Clear()</c>) before re-running it; otherwise the retry tracks
+    /// the same entities twice or inserts duplicates. Handlers must therefore keep all
+    /// their writes in the <c>DbContext</c>, so that re-running them is safe.
     /// </remarks>
     Task<TResult> ExecuteAsync<TResult>(
         Func<CancellationToken, Task<TResult>> operation,

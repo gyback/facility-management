@@ -12,5 +12,8 @@ internal sealed class LoggingCommandHandlerDecorator<TCommand, TResult>(
     where TCommand : ICommand<TResult>
 {
     public Task<TResult> HandleAsync(TCommand command, CancellationToken cancellationToken = default) =>
-        HandlerLogging.LogAsync<TCommand, TResult>(logger, () => inner.HandleAsync(command, cancellationToken));
+        HandlerLogging.LogAsync<TCommand, TResult>(
+            logger,
+            () => inner.HandleAsync(command, cancellationToken),
+            cancellationToken);
 }

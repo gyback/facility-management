@@ -12,5 +12,8 @@ internal sealed class LoggingQueryHandlerDecorator<TQuery, TResult>(
     where TQuery : IQuery<TResult>
 {
     public Task<TResult> HandleAsync(TQuery query, CancellationToken cancellationToken = default) =>
-        HandlerLogging.LogAsync<TQuery, TResult>(logger, () => inner.HandleAsync(query, cancellationToken));
+        HandlerLogging.LogAsync<TQuery, TResult>(
+            logger,
+            () => inner.HandleAsync(query, cancellationToken),
+            cancellationToken);
 }
