@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FacilityManagementService.A
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FacilityManagementService.Infrastructure", "FacilityManagementService.Infrastructure\FacilityManagementService.Infrastructure.csproj", "{EF537F69-0440-46EC-B078-BEDA3A32730A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FacilityManagementService.Application.Tests", "FacilityManagementService.Application.Tests\FacilityManagementService.Application.Tests.csproj", "{C376D8F5-993B-4151-BE7D-336D6BE6DF19}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{EF537F69-0440-46EC-B078-BEDA3A32730A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EF537F69-0440-46EC-B078-BEDA3A32730A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EF537F69-0440-46EC-B078-BEDA3A32730A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C376D8F5-993B-4151-BE7D-336D6BE6DF19}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C376D8F5-993B-4151-BE7D-336D6BE6DF19}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C376D8F5-993B-4151-BE7D-336D6BE6DF19}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C376D8F5-993B-4151-BE7D-336D6BE6DF19}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
