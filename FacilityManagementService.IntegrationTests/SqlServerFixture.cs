@@ -15,8 +15,10 @@ namespace FacilityManagementService.IntegrationTests;
 /// </summary>
 public sealed class SqlServerFixture : IAsyncLifetime
 {
-    // SQL Server 2022 is the engine behind Azure SQL Database and the homelab's
-    // SQL Server Express (ADR-0008).
+    // SQL Server 2022 is the closest local stand-in for Azure SQL Database (an evergreen
+    // engine, not a fixed version) and the homelab's SQL Server Express (ADR-0008). The
+    // image runs the Developer edition, so Express's size and memory limits do not apply
+    // here: a green run does not prove a feature fits within them.
     // Pinned to a cumulative update so the engine only changes with a commit.
     private const string Image = "mcr.microsoft.com/mssql/server:2022-CU27-ubuntu-22.04";
 
