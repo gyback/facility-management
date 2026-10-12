@@ -86,3 +86,21 @@ internal sealed class CreateStayValidator : IValidator<CreateStay>
     }
 }
 ```
+
+## Data access
+
+Per [ADR-0014](../docs/adr/0014-use-aggregate-repositories-for-commands-and-projections-for-queries.md),
+commands and queries reach the database differently, and neither calls
+`SaveChanges`:
+
+- **Command handlers** use the repository of the aggregate they change, e.g.
+  `IStayRepository`, declared in the feature folder and implemented in
+  Infrastructure. Repositories return whole, tracked aggregates and stage
+  changes; the transaction decorator's `IUnitOfWork` saves them.
+- **Query handlers** use `IReadDbContext` (`Persistence/`), which exposes an
+  untracked `IQueryable<T>` per aggregate root, and `Select` straight into
+  their read model with EF Core's async operators (`ToListAsync`, ...).
+  `Microsoft.EntityFrameworkCore` is referenced for this alone; command
+  handlers and repository interfaces must not use EF Core types.
+- Add an aggregate root to `IReadDbContext` and its implementation when the
+  feature that introduces it needs to query it.
