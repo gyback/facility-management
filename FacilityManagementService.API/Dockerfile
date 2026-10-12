@@ -9,6 +9,9 @@ ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
 COPY ["global.json", "Directory.Build.props", "./"]
 COPY ["FacilityManagementService.API/FacilityManagementService.API.csproj", "FacilityManagementService.API/"]
+COPY ["FacilityManagementService.Application/FacilityManagementService.Application.csproj", "FacilityManagementService.Application/"]
+COPY ["FacilityManagementService.Domain/FacilityManagementService.Domain.csproj", "FacilityManagementService.Domain/"]
+COPY ["FacilityManagementService.Infrastructure/FacilityManagementService.Infrastructure.csproj", "FacilityManagementService.Infrastructure/"]
 RUN dotnet restore "FacilityManagementService.API/FacilityManagementService.API.csproj"
 COPY . .
 WORKDIR "/src/FacilityManagementService.API"

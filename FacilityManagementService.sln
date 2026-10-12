@@ -2,6 +2,12 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FacilityManagementService.API", "FacilityManagementService.API\FacilityManagementService.API.csproj", "{722368E9-9754-49A3-ADED-83632F1376BF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FacilityManagementService.Domain", "FacilityManagementService.Domain\FacilityManagementService.Domain.csproj", "{8326A60E-13EC-4DDF-B907-301B37A0B78F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FacilityManagementService.Application", "FacilityManagementService.Application\FacilityManagementService.Application.csproj", "{B5C87DE9-99E4-43E7-9049-4F2B32CCDA31}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FacilityManagementService.Infrastructure", "FacilityManagementService.Infrastructure\FacilityManagementService.Infrastructure.csproj", "{EF537F69-0440-46EC-B078-BEDA3A32730A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +18,17 @@ Global
 		{722368E9-9754-49A3-ADED-83632F1376BF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{722368E9-9754-49A3-ADED-83632F1376BF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{722368E9-9754-49A3-ADED-83632F1376BF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8326A60E-13EC-4DDF-B907-301B37A0B78F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8326A60E-13EC-4DDF-B907-301B37A0B78F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8326A60E-13EC-4DDF-B907-301B37A0B78F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8326A60E-13EC-4DDF-B907-301B37A0B78F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B5C87DE9-99E4-43E7-9049-4F2B32CCDA31}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B5C87DE9-99E4-43E7-9049-4F2B32CCDA31}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B5C87DE9-99E4-43E7-9049-4F2B32CCDA31}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B5C87DE9-99E4-43E7-9049-4F2B32CCDA31}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EF537F69-0440-46EC-B078-BEDA3A32730A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EF537F69-0440-46EC-B078-BEDA3A32730A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EF537F69-0440-46EC-B078-BEDA3A32730A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EF537F69-0440-46EC-B078-BEDA3A32730A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
