@@ -17,7 +17,8 @@ public sealed class SqlServerFixture : IAsyncLifetime
 {
     // SQL Server 2022 is the engine behind Azure SQL Database and the homelab's
     // SQL Server Express (ADR-0008).
-    private const string Image = "mcr.microsoft.com/mssql/server:2022-latest";
+    // Pinned to a cumulative update so the engine only changes with a commit.
+    private const string Image = "mcr.microsoft.com/mssql/server:2022-CU27-ubuntu-22.04";
 
     private readonly MsSqlContainer _container = new MsSqlBuilder(Image).Build();
 
