@@ -58,10 +58,13 @@ caller of `SaveChanges`.
   nights". There is no generic `IRepository<T>` and no base class. A
   repository always returns whole, tracked aggregates; which navigations to
   include is decided once, in its Infrastructure implementation.
-- **Repositories never save.** No repository exposes `SaveChanges`. The
-  implementations and the `IUnitOfWork` implementation share the same
-  scoped `DbContext`, so changes a handler makes to the aggregates it loaded
-  are picked up when the unit of work saves and commits.
+- **Repositories never save.** No repository exposes `SaveChanges`. A
+  repository only stages changes in the `DbContext` it shares with the
+  `IUnitOfWork` implementation (both scoped), so changes a handler makes to
+  the aggregates it loaded are picked up when the unit of work saves and
+  commits. This keeps every write a command makes inside the `DbContext`,
+  which is what `IUnitOfWork` requires to re-run a handler safely on a
+  transient failure.
 - **Queries project directly from the EF Core model.** Query handlers stay in
   the Application project and depend on a read-only `IReadDbContext`
   interface that exposes an `IQueryable<T>` per aggregate root. Its
@@ -74,9 +77,7 @@ caller of `SaveChanges`.
   and repository interfaces do not use EF Core types. Entity configuration,
   the `DbContext` and all provider-specific code stay in Infrastructure.
 - **Who calls `SaveChanges`.** Only the EF Core implementation of
-  `IUnitOfWork`, once per command, inside the transaction. Before re-running
-  the operation on a transient failure, it clears the change tracker so the
-  retry starts from the database state.
+  `IUnitOfWork`, once per command, inside the transaction.
 
 ## Options considered
 
@@ -158,9 +159,8 @@ in Infrastructure next to the `DbContext`.
 
 - Add `IReadDbContext` to Application and the `Microsoft.EntityFrameworkCore`
   package reference.
-- Implement `IUnitOfWork` over the `DbContext` in Infrastructure, using the
-  execution strategy and clearing the change tracker before a retry, and
-  register it alongside `IReadDbContext` as scoped.
+- Implement `IUnitOfWork` over the `DbContext` in Infrastructure as its
+  contract specifies, and register it alongside `IReadDbContext` as scoped.
 - Add `IStayRepository` and its implementation with the first bookings
   slice.
 - Set up integration tests for query handlers against SQL Server (for
