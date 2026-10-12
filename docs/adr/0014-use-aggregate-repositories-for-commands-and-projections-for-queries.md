@@ -1,6 +1,6 @@
 # ADR-0014: Use aggregate repositories for commands and projections for queries
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-12
 - **Deciders:** Gustav Gybäck (sole developer)
 
@@ -157,14 +157,18 @@ in Infrastructure next to the `DbContext`.
 
 ### Follow-up
 
-- Add `IReadDbContext` to Application and the `Microsoft.EntityFrameworkCore`
-  package reference.
-- Implement `IUnitOfWork` over the `DbContext` in Infrastructure as its
-  contract specifies, and register it alongside `IReadDbContext` as scoped.
-- Add `IStayRepository` and its implementation with the first bookings
-  slice.
+- Add `IReadDbContext` and the `Microsoft.EntityFrameworkCore` package
+  reference to Application, and implement `IUnitOfWork` over the
+  `DbContext` in Infrastructure as its contract specifies, both registered
+  as scoped
+  ([#40](https://github.com/gyback/facility-management/issues/40)).
+- Add each aggregate's repository with the feature that introduces it,
+  starting with facilities
+  ([#45](https://github.com/gyback/facility-management/issues/45)) and stays
+  ([#8](https://github.com/gyback/facility-management/issues/8)).
 - Set up integration tests for query handlers against SQL Server (for
-  example with Testcontainers).
+  example with Testcontainers)
+  ([#44](https://github.com/gyback/facility-management/issues/44)).
 
 ## References
 
