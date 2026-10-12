@@ -16,13 +16,16 @@ namespace FacilityManagementService.IntegrationTests;
 public sealed class SqlServerFixture : IAsyncLifetime
 {
     // SQL Server 2022 is the closest local stand-in for Azure SQL Database (an evergreen
-    // engine, not a fixed version) and the homelab's SQL Server Express (ADR-0008). The
-    // image runs the Developer edition, so Express's size and memory limits do not apply
-    // here: a green run does not prove a feature fits within them.
+    // engine, not a fixed version) and the homelab's SQL Server Express (ADR-0008).
     // Pinned to a cumulative update so the engine only changes with a commit.
     private const string Image = "mcr.microsoft.com/mssql/server:2022-CU27-ubuntu-22.04";
 
-    private readonly MsSqlContainer _container = new MsSqlBuilder(Image).Build();
+    // Express, as on staging, so a migration that needs a higher edition (e.g. an ONLINE
+    // index rebuild) fails here rather than on its way to staging. Azure SQL has most
+    // higher-edition features, so Express is the stricter of the two targets.
+    private readonly MsSqlContainer _container = new MsSqlBuilder(Image)
+        .WithEnvironment("MSSQL_PID", "Express")
+        .Build();
 
     public ValueTask InitializeAsync() => new(_container.StartAsync());
 
