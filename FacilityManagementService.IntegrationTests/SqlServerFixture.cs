@@ -27,7 +27,8 @@ public sealed class SqlServerFixture : IAsyncLifetime
 
     /// <summary>
     /// Creates an empty database with a unique name and applies <typeparamref name="TContext"/>'s
-    /// migrations to it, so each test class gets its own schema and data.
+    /// migrations to it. Call it from a test class's <c>InitializeAsync</c>, which xUnit
+    /// runs once per test, so every test gets its own schema and data.
     /// </summary>
     /// <param name="createContext">Creates a context from the options the database is reached with.</param>
     public async Task<TestDatabase<TContext>> CreateDatabaseAsync<TContext>(

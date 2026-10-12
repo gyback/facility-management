@@ -15,9 +15,11 @@ removes the container itself.
 ## Writing a test
 
 `SqlServerFixture` is an assembly fixture: one container for the whole test
-run. Each test class creates its own database from it, with every migration
-applied by `Database.MigrateAsync()`, the same call the migration entry point
-(#11) makes:
+run. Each test creates its own database from it, with every migration applied
+by `Database.MigrateAsync()`, the same call the migration entry point (#11)
+makes. xUnit creates a new test-class instance for every test, so
+`InitializeAsync` and `DisposeAsync` run once per test and no test sees
+another's data:
 
 ```csharp
 public sealed class GetStayTests(SqlServerFixture sqlServer) : IAsyncLifetime
