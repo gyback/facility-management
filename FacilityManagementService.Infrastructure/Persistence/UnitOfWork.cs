@@ -22,6 +22,13 @@ internal sealed class UnitOfWork(AppDbContext context) : IUnitOfWork
         Func<CancellationToken, Task<TResult>> operation,
         CancellationToken cancellationToken = default)
     {
+        if (context.Database.CurrentTransaction is not null)
+        {
+            throw new InvalidOperationException(
+                "A unit of work is already running in this scope; a command cannot run another command. " +
+                "Share the logic through the domain or an application service instead.");
+        }
+
         var attempted = false;
 
         return context.Database.CreateExecutionStrategy().ExecuteAsync(

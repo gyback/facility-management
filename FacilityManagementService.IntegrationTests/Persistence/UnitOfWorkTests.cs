@@ -131,6 +131,25 @@ public sealed class UnitOfWorkTests(SqlServerFixture sqlServer) : IAsyncLifetime
         Assert.Empty(await ReadNotesAsync());
     }
 
+    [Fact]
+    public async Task A_unit_of_work_cannot_run_inside_another()
+    {
+        await using var scope = _services.CreateAsyncScope();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var exception = await Assert.ThrowsAsync<InvalidOperationException>(() => unitOfWork.ExecuteAsync(
+            async cancellationToken =>
+            {
+                context.Add(new Note { Text = "outer" });
+                return await unitOfWork.ExecuteAsync(_ => Task.FromResult(1), cancellationToken);
+            },
+            TestContext.Current.CancellationToken));
+
+        Assert.StartsWith("A unit of work is already running in this scope", exception.Message);
+        Assert.Empty(await ReadNotesAsync());
+    }
+
     /// <summary>
     /// Runs <paramref name="operation"/> through the scope's unit of work, giving it the
     /// scope's <see cref="AppDbContext"/> as a command handler's repositories would use it.

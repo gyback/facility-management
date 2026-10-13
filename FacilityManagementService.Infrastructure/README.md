@@ -11,7 +11,7 @@ registers everything below.
 | Type | Role |
 |---|---|
 | `AppDbContext` | The EF Core model. Applies every `IEntityTypeConfiguration<T>` in this assembly. Internal, so nothing outside Infrastructure can reach it. |
-| `UnitOfWork` : `IUnitOfWork` | Runs each command in one transaction under the SQL Server retrying execution strategy, and is the only caller of `SaveChanges`. On a transient failure it clears the change tracker and re-runs the whole command. |
+| `UnitOfWork` : `IUnitOfWork` | Runs each command in one transaction under the SQL Server retrying execution strategy, and is the only caller of `SaveChanges`. On a transient failure it clears the change tracker and re-runs the whole command. Units of work do not nest: running a command from inside another throws. |
 | `ReadDbContext` : `IReadDbContext` | Untracked `IQueryable<T>` per aggregate root for query handlers. |
 | Repositories | One per aggregate root, added with its feature. They stage changes in the scoped `AppDbContext` and never save. |
 
