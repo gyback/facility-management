@@ -29,12 +29,22 @@ public sealed class UnitOfWorkTests(SqlServerFixture sqlServer) : IAsyncLifetime
         var cancellationToken = TestContext.Current.CancellationToken;
         _database = await sqlServer.CreateDatabaseAsync<AppDbContext>(options => new(options), cancellationToken);
 
-        await using var context = _database.CreateContext();
-        await context.Database.ExecuteSqlRawAsync(
-            "CREATE TABLE Notes (Id uniqueidentifier NOT NULL PRIMARY KEY, Text nvarchar(100) NOT NULL)",
-            cancellationToken);
+        try
+        {
+            await using var context = _database.CreateContext();
+            await context.Database.ExecuteSqlRawAsync(
+                "CREATE TABLE Notes (Id uniqueidentifier NOT NULL PRIMARY KEY, Text nvarchar(100) NOT NULL)",
+                cancellationToken);
 
-        _services = AddInfrastructure(context.Database.GetConnectionString()!);
+            _services = AddInfrastructure(context.Database.GetConnectionString()!);
+        }
+        catch
+        {
+            // xUnit does not dispose a test class whose InitializeAsync throws, so nothing
+            // else would drop the database.
+            await _database.DisposeAsync();
+            throw;
+        }
     }
 
     public async ValueTask DisposeAsync()
