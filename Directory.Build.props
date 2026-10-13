@@ -7,4 +7,15 @@
         <ImplicitUsings>enable</ImplicitUsings>
     </PropertyGroup>
 
+    <!-- Shared by every test project (*Tests); per-project dependencies stay in each csproj. -->
+    <PropertyGroup Condition="$(MSBuildProjectName.EndsWith('Tests'))">
+        <OutputType>Exe</OutputType>
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+
+    <ItemGroup Condition="$(MSBuildProjectName.EndsWith('Tests'))">
+        <PackageReference Include="xunit.v3" Version="4.0.2" />
+        <Using Include="Xunit" />
+    </ItemGroup>
+
 </Project>
