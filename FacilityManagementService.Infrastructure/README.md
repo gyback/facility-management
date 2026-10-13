@@ -53,3 +53,11 @@ Creating migrations needs no database. To apply them by hand, add
 deployments they are applied by the migration entry point
 ([#11](https://github.com/gyback/facility-management/issues/11)), never by
 the API on startup.
+
+## Tests
+
+`FacilityManagementService.Infrastructure.Tests` covers what needs no
+database: the `Database` settings validation, the `AddInfrastructure()`
+registrations and a check that the model has no changes missing a migration.
+`FacilityManagementService.IntegrationTests` runs `UnitOfWork` against SQL
+Server: commit, rollback, and the retry after a transient failure.

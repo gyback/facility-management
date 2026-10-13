@@ -13,4 +13,9 @@
         </PackageReference>
     </ItemGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="FacilityManagementService.Infrastructure.Tests" />
+        <InternalsVisibleTo Include="FacilityManagementService.IntegrationTests" />
+    </ItemGroup>
+
 </Project>

@@ -14,6 +14,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FacilityManagementService.D
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FacilityManagementService.IntegrationTests", "FacilityManagementService.IntegrationTests\FacilityManagementService.IntegrationTests.csproj", "{812FB051-F0F8-4D9F-90D0-09FECBD594CB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FacilityManagementService.Infrastructure.Tests", "FacilityManagementService.Infrastructure.Tests\FacilityManagementService.Infrastructure.Tests.csproj", "{58B0EC06-3911-4F2B-8DA3-26F1D109F483}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -48,5 +50,9 @@ Global
 		{812FB051-F0F8-4D9F-90D0-09FECBD594CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{812FB051-F0F8-4D9F-90D0-09FECBD594CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{812FB051-F0F8-4D9F-90D0-09FECBD594CB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{58B0EC06-3911-4F2B-8DA3-26F1D109F483}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{58B0EC06-3911-4F2B-8DA3-26F1D109F483}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{58B0EC06-3911-4F2B-8DA3-26F1D109F483}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{58B0EC06-3911-4F2B-8DA3-26F1D109F483}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
