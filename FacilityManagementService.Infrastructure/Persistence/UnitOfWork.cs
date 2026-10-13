@@ -13,8 +13,10 @@ internal sealed class UnitOfWork(AppDbContext context) : IUnitOfWork
     /// <remarks>
     /// The execution strategy re-runs the whole attempt on a transient failure, after
     /// discarding the changes the failed attempt tracked. A failure while committing is
-    /// retried as well, so in the rare case that the commit reached the database before the
-    /// connection failed, the operation runs twice; unique indexes are the safety net.
+    /// retried as well, without checking whether the commit reached the database. In the rare
+    /// case that it did, the operation runs a second time: its changes are saved twice, or,
+    /// when a unique index rejects the duplicate, the command fails although its first attempt
+    /// was committed. This is accepted until commands are made idempotent (#50).
     /// </remarks>
     public Task<TResult> ExecuteAsync<TResult>(
         Func<CancellationToken, Task<TResult>> operation,
