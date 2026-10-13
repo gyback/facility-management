@@ -42,11 +42,12 @@ internal sealed class DatabaseOptionsValidator : IValidateOptions<DatabaseOption
             }
         }
 
+        var supported = string.Join(", ", Enum.GetNames<DatabaseAuthentication>());
+
         switch (options.Authentication)
         {
             case null:
-                failures.Add(
-                    $"{section}:Authentication is required; one of: {string.Join(", ", Enum.GetNames<DatabaseAuthentication>())}.");
+                failures.Add($"{section}:Authentication is required; one of: {supported}.");
                 break;
             case DatabaseAuthentication.Password:
                 if (string.IsNullOrWhiteSpace(options.User))
@@ -59,6 +60,10 @@ internal sealed class DatabaseOptionsValidator : IValidateOptions<DatabaseOption
                     failures.Add($"{section}:Password is required for Password authentication.");
                 }
 
+                break;
+            default:
+                // A number the binder accepts but no member is defined for, e.g. "1".
+                failures.Add($"{section}:Authentication '{options.Authentication}' is not supported; one of: {supported}.");
                 break;
         }
 

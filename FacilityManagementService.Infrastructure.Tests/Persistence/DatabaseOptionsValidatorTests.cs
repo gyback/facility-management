@@ -85,6 +85,17 @@ public sealed class DatabaseOptionsValidatorTests
         Assert.Equal(["Database:Authentication is required; one of: Password."], result.Failures);
     }
 
+    [Fact]
+    public void An_undefined_authentication_is_rejected()
+    {
+        var options = ValidOptions();
+        options.Authentication = (DatabaseAuthentication)1;
+
+        var result = _validator.Validate(null, options);
+
+        Assert.Equal(["Database:Authentication '1' is not supported; one of: Password."], result.Failures);
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]
