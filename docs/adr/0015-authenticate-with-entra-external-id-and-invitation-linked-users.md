@@ -57,21 +57,28 @@ data in our own database.
   not a provider-specific SDK, so the same build works against any
   compliant provider.
 - The API validates tokens with the standard JWT bearer handler. Authority,
-  audience and the name of the subject claim come from configuration. The
-  subject claim is `oid` for Entra, which is stable per user across app
-  registrations, and `sub` for other providers. Inbound claim mapping is
-  turned off so claim names are the ones in the token.
-- A fallback authorisation policy requires an authenticated caller on every
-  endpoint. Only the health probes and the OpenAPI document are anonymous.
+  audience, the name of the subject claim and a short provider key (for
+  example `entra`) come from configuration. The subject claim is `oid` for
+  Entra, which is stable per user across app registrations, and `sub` for
+  other providers. Inbound claim mapping is turned off so claim names are
+  the ones in the token.
+- A fallback authorisation policy requires an authenticated caller whose
+  identity is linked to a user on every endpoint. Only `AcceptInvitation`
+  and reading one's own sign-in state opt out to a policy that requires
+  authentication alone. The health probes and the OpenAPI document are
+  anonymous.
 - The API keeps no session and issues no cookies.
 
 ### Identity to user
 
 - A `User` aggregate (a new `Users/` feature) holds our own `UserId`, a
   display name, and the external identities linked to it. Each identity is
-  an issuer and a subject, with a unique index on the pair. Stays, comments
-  and memberships reference `UserId`, never a provider subject, so changing
-  provider means re-linking identities rather than rewriting data.
+  a provider key and a subject, with a unique index on the pair. The
+  provider key is the configured name, not the token's `iss` claim. Entra's
+  issuer string differs between v1 and v2 access tokens and depends on
+  tenant settings, and a change there must not unlink every user. Stays,
+  comments and memberships reference `UserId`, never a provider subject, so
+  changing provider means re-linking identities rather than rewriting data.
 - Users exist only through **invitations**. A facility administrator invites
   someone to a facility with a role. The API returns a single-use link with
   a random token, stored hashed and valid for 14 days. The administrator
@@ -84,9 +91,11 @@ data in our own database.
   becomes linked. Email addresses are never used for matching, so the API
   does not need to trust an `email_verified` claim.
 - An identity that signs in without being linked gets `403` with a
-  dedicated problem type. The SPA shows "ask a family member for an
-  invitation". Only `AcceptInvitation` and reading one's own sign-in state
-  are allowed for unlinked identities.
+  dedicated problem type from the fallback policy, before any handler runs.
+  The SPA shows "ask a family member for an invitation". Only
+  `AcceptInvitation` and reading one's own sign-in state are allowed for
+  unlinked identities. This check does not depend on any facility, so it
+  sits in the API rather than relying on each handler.
 - The first user cannot be invited by anyone. A one-off command in the
   migration entry point creates the first facility and prints an
   administrator invitation link. The user who accepts it is also allowed
@@ -107,14 +116,16 @@ public interface ICurrentUser
     ExternalIdentity Identity { get; }
 }
 
-public sealed record ExternalIdentity(string Issuer, string Subject, string? DisplayName);
+public sealed record ExternalIdentity(string Provider, string Subject, string? DisplayName);
 ```
 
-- The implementation is scoped. After authentication, a middleware in the
-  API reads the issuer and the configured subject claim. Infrastructure
-  looks up the linked `UserId` with one indexed query, and the result is
-  stored in the scoped instance. `Id` is therefore a plain property, and
-  resolving it never writes.
+- The implementation is scoped. After authentication and before
+  authorisation, a middleware in the API reads the configured subject claim
+  and pairs it with the configured provider key. Infrastructure looks up
+  the linked `UserId` with one indexed query, and the result is stored in
+  the scoped instance, where the fallback policy also reads it. `Id` is
+  therefore a plain property, and resolving it never writes. Its exception
+  is a backstop for code that runs outside the policy.
 - Handlers pass `UserId` into domain methods as an argument, for example
   `stay.Reschedule(by: userId, ...)`. Domain code never sees
   `ICurrentUser`.
@@ -124,23 +135,27 @@ public sealed record ExternalIdentity(string Issuer, string Subject, string? Dis
 
 ### Per-facility authorisation
 
+- **Everything is scoped to what the caller can see.** A caller sees a
+  facility, and everything in it, only if they are a member of it.
+  Anything outside that scope is not found (`404`), exactly as if it did
+  not exist, so a response never reveals that it exists. Inside the scope,
+  a caller whose role or ownership does not allow a change gets `403`.
 - **What a role allows** is domain logic. The `Facility` aggregate answers
   "what is this user's role here" and exposes rule checks such as "may
   manage members". Ownership rules, such as only the owner may change a
   stay, live in the aggregate that owns the data and take the acting
   `UserId`.
-- **Command handlers check before they act.** They load the aggregates
-  through their repositories (ADR-0014), call the domain check, and throw
-  `ForbiddenException` if it fails. Every command that touches facility
-  data does this explicitly. There is no decorator or endpoint attribute
-  for it.
+- **Command handlers check before they act**, in two steps. They load the
+  aggregates through their repositories (ADR-0014) and first check that
+  the caller is a member of the facility the target belongs to, failing
+  with the not-found error if not. Only then do they call the domain rule
+  check and throw `ForbiddenException` if it fails. Every command that
+  touches facility data does this explicitly. There is no decorator or
+  endpoint attribute for it.
 - **Query handlers scope the projection** to facilities where the caller is
   a member. Data in other facilities is simply not found.
-- A caller who is not a member of a facility gets `404` for anything in it,
-  the same as if it did not exist. A member whose role does not allow an
-  action gets `403`.
-- The API layer only enforces "authenticated". It has no per-endpoint roles
-  or policies.
+- The API layer enforces only that the caller is authenticated and linked
+  to a user. It has no per-facility roles or policies.
 - **There is no system-wide role.** Every permission inside a facility
   comes from a facility role, and nothing grants access across facilities.
   Operator tasks such as bootstrapping or data repair run outside the API,
@@ -164,6 +179,15 @@ one permission that cannot come from a facility.
   migration entry point, and to the first user by the bootstrap. The API
   has no endpoint for it, so no one can grant it to themselves through the
   application. Revoking it does not affect facilities already created.
+
+### Operator commands
+
+ADR-0007 and ADR-0009 introduced the migration entry point to apply schema
+migrations. This decision widens it to a small set of operator commands:
+bootstrapping the first user, and granting and revoking
+`CanCreateFacilities`. Each is a separate, explicitly named subcommand. The
+pre-deploy job and the Compose one-shot service run only the migration
+subcommand, so a deployment never runs an operator command.
 
 ### Local development, tests and staging
 
@@ -399,7 +423,8 @@ one permission that cannot come from a facility.
 
 ### Follow-up
 
-- Configure JWT bearer authentication, the fallback policy and
+- Configure JWT bearer authentication, the provider key, the fallback
+  policy for linked users with its authentication-only opt-out, and
   `ICurrentUser` with its resolving middleware, including the integration
   test token helper
   ([#41](https://github.com/gyback/facility-management/issues/41)).
@@ -408,7 +433,8 @@ one permission that cannot come from a facility.
   authorisation checks with the facilities and membership feature
   ([#45](https://github.com/gyback/facility-management/issues/45)).
 - Map `UnregisteredUserException` and `ForbiddenException` to their problem
-  responses in the error contract
+  responses in the error contract, and use its not-found error for anything
+  outside the caller's scope
   ([#43](https://github.com/gyback/facility-management/issues/43)).
 - Add the mock OIDC server to the Compose stack
   ([#12](https://github.com/gyback/facility-management/issues/12)).
