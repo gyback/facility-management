@@ -89,7 +89,8 @@ data in our own database.
   are allowed for unlinked identities.
 - The first user cannot be invited by anyone. A one-off command in the
   migration entry point creates the first facility and prints an
-  administrator invitation link.
+  administrator invitation link. The user who accepts it is also allowed
+  to create facilities (see [Creating facilities](#creating-facilities)).
 
 ### `ICurrentUser`
 
@@ -118,7 +119,8 @@ public sealed record ExternalIdentity(string Issuer, string Subject, string? Dis
   `stay.Reschedule(by: userId, ...)`. Domain code never sees
   `ICurrentUser`.
 - `ICurrentUser` has no roles or claims beyond identity. Roles are per
-  facility and live in our database.
+  facility, and the one permission outside any facility is on the `User`
+  aggregate. Both live in our database.
 
 ### Per-facility authorisation
 
@@ -139,6 +141,29 @@ public sealed record ExternalIdentity(string Issuer, string Subject, string? Dis
   action gets `403`.
 - The API layer only enforces "authenticated". It has no per-endpoint roles
   or policies.
+- **There is no system-wide role.** Every permission inside a facility
+  comes from a facility role, and nothing grants access across facilities.
+  Operator tasks such as bootstrapping or data repair run outside the API,
+  through the migration entry point or directly against the database.
+  Adding a system-wide role needs a new ADR, because it would bypass the
+  facility scoping in every query handler.
+
+### Creating facilities
+
+Creating a facility happens before any facility role exists, so it is the
+one permission that cannot come from a facility.
+
+- The `User` aggregate has a single capability, `CanCreateFacilities`. It
+  allows creating a facility and nothing else. The creator becomes the new
+  facility's administrator, after which the per-facility rules apply. It
+  gives no access to other facilities.
+- The create-facility handler loads the caller's `User` and the domain
+  refuses with `ForbiddenException` if the capability is missing, the same
+  way as any other check.
+- The capability is granted and revoked only through a command in the
+  migration entry point, and to the first user by the bootstrap. The API
+  has no endpoint for it, so no one can grant it to themselves through the
+  application. Revoking it does not affect facilities already created.
 
 ### Local development, tests and staging
 
@@ -274,6 +299,47 @@ public sealed record ExternalIdentity(string Issuer, string Subject, string? Dis
   ownership, so handlers still check; hides an important rule behind
   convention.
 
+#### Option 4: Add a system-wide administrator role
+
+- Pros: Support and data repair possible from the application, without
+  database access.
+- Cons: A bypass in every domain check and every query's facility scoping;
+  one powerful account to protect; no current need, since operator tasks
+  already have a route outside the API.
+
+### Who may create facilities
+
+#### Option 1: A `CanCreateFacilities` capability granted out of band (chosen)
+
+- Pros: The right is held by named, trusted people; one flag, checked in
+  Domain like every other rule; cannot be self-granted through the API;
+  can be handed to a trusted relative without making them an operator.
+- Cons: Granting it needs operator access to run the entry point command.
+
+#### Option 2: An allow-list of identities in configuration
+
+- Pros: No schema change.
+- Cons: Holds provider subjects or `UserId`s in configuration, tying it to
+  the provider or to database ids; every change needs a redeploy.
+
+#### Option 3: Any facility administrator may create facilities
+
+- Pros: No new concept.
+- Cons: The right spreads to everyone made an administrator anywhere,
+  which is what this decision is meant to prevent.
+
+#### Option 4: Roles issued by the provider (Entra app roles)
+
+- Pros: Managed in the provider's portal; arrive in the token.
+- Cons: Provider-specific, so the mock server and any future provider must
+  imitate them; authorisation data would live outside our database.
+
+#### Option 5: Only the operator creates facilities
+
+- Pros: Tightest control; no flag at all.
+- Cons: Every facility is set up by hand through the entry point, and the
+  right cannot be delegated.
+
 ### Running without the real provider
 
 #### Option 1: Mock OIDC server in Compose (chosen)
@@ -300,7 +366,8 @@ public sealed record ExternalIdentity(string Issuer, string Subject, string? Dis
 ### Positive
 
 - Relatives sign in without passwords, and nobody gets in without an
-  invitation from someone already in the family.
+  invitation from someone already in the family. Only people the operator
+  has named can create facilities.
 - No credentials, passcode delivery or email sending to run, and nothing
   to pay at this scale.
 - The provider is a configuration detail. Our data references only
@@ -322,6 +389,9 @@ public sealed record ExternalIdentity(string Issuer, string Subject, string? Dis
   Security Policy is required on the frontend.
 - An Entra external tenant is a second directory to administer, and part
   of its setup may not be expressible in infrastructure as code.
+- Granting or revoking the right to create facilities needs operator
+  access to the migration entry point. That is acceptable for the few
+  times it happens, but it is not self-service.
 - A relative who loses access to their sign-in can be invited again, but
   accepting with a new identity creates a new user. Their stays and
   comments stay with the old one until re-linking an identity to an
@@ -333,16 +403,17 @@ public sealed record ExternalIdentity(string Issuer, string Subject, string? Dis
   `ICurrentUser` with its resolving middleware, including the integration
   test token helper
   ([#41](https://github.com/gyback/facility-management/issues/41)).
-- Add the `User` aggregate, invitations, `AcceptInvitation`, facility roles
-  and the domain authorisation checks with the facilities and membership
-  feature
+- Add the `User` aggregate with its `CanCreateFacilities` capability,
+  invitations, `AcceptInvitation`, facility roles and the domain
+  authorisation checks with the facilities and membership feature
   ([#45](https://github.com/gyback/facility-management/issues/45)).
 - Map `UnregisteredUserException` and `ForbiddenException` to their problem
   responses in the error contract
   ([#43](https://github.com/gyback/facility-management/issues/43)).
 - Add the mock OIDC server to the Compose stack
   ([#12](https://github.com/gyback/facility-management/issues/12)).
-- Add the first-user bootstrap command to the migration entry point
+- Add the first-user bootstrap command, and the commands that grant and
+  revoke `CanCreateFacilities`, to the migration entry point
   ([#11](https://github.com/gyback/facility-management/issues/11)).
 - Create the Entra external tenant and its app registrations, as code where
   the provider allows
