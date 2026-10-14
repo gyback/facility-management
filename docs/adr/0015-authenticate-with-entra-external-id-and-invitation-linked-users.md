@@ -1,6 +1,6 @@
 # ADR-0015: Authenticate with Entra External ID and link identities to users by invitation
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-13
 - **Deciders:** Gustav Gybäck (sole developer)
 
