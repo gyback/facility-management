@@ -75,6 +75,7 @@ sitting.
 | [0012](0012-target-the-latest-lts-release-of-dotnet.md) | Target the latest LTS release of .NET | Accepted | 2026-10-09 |
 | [0013](0013-share-comment-threads-across-features.md) | Share comment threads across features | Accepted | 2026-10-09 |
 | [0014](0014-use-aggregate-repositories-for-commands-and-projections-for-queries.md) | Use aggregate repositories for commands and projections for queries | Accepted | 2026-10-12 |
+| [0015](0015-authenticate-with-entra-external-id-and-invitation-linked-users.md) | Authenticate with Entra External ID and link identities to users by invitation | Accepted | 2026-10-14 |
 
 ## Follow-ups
 
