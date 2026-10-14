@@ -419,7 +419,8 @@ one permission that cannot come from a facility.
   the provider allows
   ([#13](https://github.com/gyback/facility-management/issues/13)).
 - Decide how a user re-links after losing access to their sign-in, and
-  whether a member can remove their own account.
+  whether a member can remove their own account
+  ([#51](https://github.com/gyback/facility-management/issues/51)).
 
 ## References
 
