@@ -161,3 +161,6 @@ A single `Comments` table with `TargetType` and `TargetId` columns.
 - [ADR-0005: Model bookings as non-blocking stays](0005-model-bookings-as-non-blocking-stays.md)
 - [ADR-0009: Use Entity Framework Core for data access](0009-use-entity-framework-core-for-data-access.md)
 - [ADR-0011: Use hand-rolled command and query handlers](0011-use-hand-rolled-command-and-query-handlers.md)
+- [ADR-0016: Keep the history of edited and deleted comments](0016-keep-the-history-of-edited-and-deleted-comments.md)
+  sets the comment rules left open here, and replaces the lifecycle rule:
+  an owner soft-deletes its thread instead of removing it.
