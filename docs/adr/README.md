@@ -77,6 +77,7 @@ sitting.
 | [0014](0014-use-aggregate-repositories-for-commands-and-projections-for-queries.md) | Use aggregate repositories for commands and projections for queries | Accepted | 2026-10-12 |
 | [0015](0015-authenticate-with-entra-external-id-and-invitation-linked-users.md) | Authenticate with Entra External ID and link identities to users by invitation | Accepted | 2026-10-14 |
 | [0016](0016-keep-the-history-of-edited-and-deleted-comments.md) | Keep the history of edited and deleted comments | Accepted | 2026-10-15 |
+| [0017](0017-use-minimal-apis-with-problem-details-warnings-and-idempotency-keys.md) | Use minimal APIs with problem details, warnings and idempotency keys | Accepted | 2026-10-16 |
 
 ## Follow-ups
 
