@@ -56,7 +56,7 @@ public sealed class HandlerDecoratorTests : IDisposable
         var exception = await Assert.ThrowsAsync<ValidationException>(() =>
             handler.HandleAsync(new CreateThing(""), TestContext.Current.CancellationToken));
 
-        Assert.Equal([new ValidationError(nameof(CreateThing.Name), "Name is required.")], exception.Errors);
+        Assert.Equal([ValidationError.Required(nameof(CreateThing.Name))], exception.Errors);
         Assert.Equal(["validate"], Journal);
         var log = Assert.Single(Logs);
         Assert.Equal(LogLevel.Warning, log.Level);
@@ -127,7 +127,7 @@ public sealed class HandlerDecoratorTests : IDisposable
     [Fact]
     public void The_validation_exception_message_does_not_contain_the_error_messages()
     {
-        var exception = new ValidationException([new ValidationError("Email", "'secret@example.com' is invalid.")]);
+        var exception = new ValidationException([new ValidationError("Email", "invalid", "'secret@example.com' is invalid.")]);
 
         Assert.Equal("Validation failed with 1 errors.", exception.Message);
     }

@@ -35,7 +35,7 @@ internal sealed class CreateThingValidator(Journal journal) : IValidator<CreateT
 
         if (string.IsNullOrWhiteSpace(instance.Name))
         {
-            yield return new ValidationError(nameof(CreateThing.Name), "Name is required.");
+            yield return ValidationError.Required(nameof(CreateThing.Name));
         }
     }
 }
@@ -60,7 +60,7 @@ internal sealed class GetThingValidator(Journal journal) : IValidator<GetThing>
 
         if (string.IsNullOrWhiteSpace(instance.Name))
         {
-            yield return new ValidationError(nameof(GetThing.Name), "Name is required.");
+            yield return ValidationError.Required(nameof(GetThing.Name));
         }
     }
 }

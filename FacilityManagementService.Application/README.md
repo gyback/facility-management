@@ -81,11 +81,27 @@ internal sealed class CreateStayValidator : IValidator<CreateStay>
     {
         if (command.To <= command.From)
         {
-            yield return new ValidationError(nameof(CreateStay.To), "A stay must end after it starts.");
+            yield return ValidationError.MustBeAfter(nameof(CreateStay.To), nameof(CreateStay.From));
         }
     }
 }
 ```
+
+### Validation codes
+
+Every `ValidationError` has a `Code` from the shared set in `ValidationCodes`
+(`required`, `too-long`, `out-of-range`, `must-be-after`), English `Message`
+for developers and the typed `Parameters` its text needs, e.g. `maxLength`
+([ADR-0017](../docs/adr/0017-use-minimal-apis-with-problem-details-warnings-and-idempotency-keys.md)).
+The frontend translates the code; the message is never shown to users and
+must never quote user input.
+
+- Create errors with the factory for their code, e.g.
+  `ValidationError.TooLong(nameof(AddComment.Body), 4000)`, rather than the
+  constructor.
+- Add a code to `ValidationCodes`, with a factory, only when no existing one
+  fits. Each code needs an entry in the catalogue in the
+  [API README](../FacilityManagementService.API/README.md#validation-codes).
 
 ## Data access
 
