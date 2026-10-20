@@ -1,5 +1,6 @@
 using FacilityManagementService.Application.Messaging;
 using FacilityManagementService.Application.Messaging.Decorators;
+using FacilityManagementService.Application.Persistence;
 using FacilityManagementService.Application.Validation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -75,6 +76,25 @@ public sealed class HandlerDecoratorTests : IDisposable
         var log = Assert.Single(Logs);
         Assert.Equal(LogLevel.Error, log.Level);
         Assert.Same(exception, log.Exception);
+    }
+
+    [Theory]
+    [InlineData("refuse", typeof(ThingRuleException), "thing-refused")]
+    [InlineData("conflict", typeof(ConflictException), "conflict")]
+    public async Task A_refused_command_is_rolled_back_and_logged_as_a_warning(string name, Type exceptionType, string code)
+    {
+        var handler = Resolve<ICommandHandler<CreateThing, Guid>>();
+
+        var exception = await Assert.ThrowsAnyAsync<Exception>(() =>
+            handler.HandleAsync(new CreateThing(name), TestContext.Current.CancellationToken));
+
+        Assert.IsType(exceptionType, exception);
+        Assert.Equal(["validate", "begin", "handle", "rollback"], Journal);
+        var log = Assert.Single(Logs);
+        Assert.Equal(LogLevel.Warning, log.Level);
+        Assert.Null(log.Exception);
+        Assert.StartsWith($"Refused {nameof(CreateThing)} after ", log.Message);
+        Assert.EndsWith($" ms with {code}", log.Message);
     }
 
     [Fact]
