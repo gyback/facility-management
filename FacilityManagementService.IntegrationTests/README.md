@@ -38,4 +38,9 @@ Arrange, act and assert through separate contexts from
 `_database.CreateContext()`, so nothing is served from a change tracker.
 
 `Probe/` holds a minimal model with its own migration that checks the harness
-itself; it is not part of the application's schema.
+itself and the strongly typed id conventions (ADR-0018); it is not part of the
+application's schema. After changing it, add a probe migration:
+
+```shell
+dotnet ef migrations add <Name> --project FacilityManagementService.IntegrationTests --startup-project FacilityManagementService.IntegrationTests --context ProbeDbContext --output-dir Probe/Migrations
+```

@@ -22,6 +22,31 @@ namespace FacilityManagementService.IntegrationTests.Probe.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("FacilityManagementService.IntegrationTests.Probe.ProbeBook", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("PreviousEditionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ShelfId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PreviousEditionId");
+
+                    b.HasIndex("ShelfId");
+
+                    b.ToTable("Books");
+                });
+
             modelBuilder.Entity("FacilityManagementService.IntegrationTests.Probe.ProbeEntity", b =>
                 {
                     b.Property<Guid>("Id")
@@ -39,6 +64,34 @@ namespace FacilityManagementService.IntegrationTests.Probe.Migrations
                         .IsUnique();
 
                     b.ToTable("Probes");
+                });
+
+            modelBuilder.Entity("FacilityManagementService.IntegrationTests.Probe.ProbeShelf", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Shelves");
+                });
+
+            modelBuilder.Entity("FacilityManagementService.IntegrationTests.Probe.ProbeBook", b =>
+                {
+                    b.HasOne("FacilityManagementService.IntegrationTests.Probe.ProbeBook", null)
+                        .WithMany()
+                        .HasForeignKey("PreviousEditionId");
+
+                    b.HasOne("FacilityManagementService.IntegrationTests.Probe.ProbeShelf", null)
+                        .WithMany("Books")
+                        .HasForeignKey("ShelfId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("FacilityManagementService.IntegrationTests.Probe.ProbeShelf", b =>
+                {
+                    b.Navigation("Books");
                 });
 #pragma warning restore 612, 618
         }
