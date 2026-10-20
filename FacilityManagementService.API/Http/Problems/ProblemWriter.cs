@@ -19,17 +19,15 @@ internal static class ProblemWriter
         IEnumerable<KeyValuePair<string, object?>>? extensions = null,
         Exception? exception = null)
     {
-        var problem = new ProblemDetails
-        {
-            Status = status,
-            Detail = detail,
-            Extensions = { [ProblemCatalogue.CodeKey] = code },
-        };
+        var problem = new ProblemDetails { Status = status, Detail = detail };
 
         foreach (var (key, value) in extensions ?? [])
         {
             problem.Extensions[key] = value;
         }
+
+        // After the extensions, so a field of the problem's own can never replace its code.
+        problem.Extensions[ProblemCatalogue.CodeKey] = code;
 
         httpContext.Response.StatusCode = status;
 

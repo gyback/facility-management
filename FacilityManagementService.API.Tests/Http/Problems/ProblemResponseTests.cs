@@ -210,5 +210,10 @@ public sealed class ProblemResponseTests : IAsyncLifetime
     private sealed class NightsFullException() : DomainRuleException(
         "nights-full",
         "The nights are full.",
-        new Dictionary<string, object?> { ["nights"] = new[] { new DateOnly(2027, 7, 10) }, ["capacity"] = 12 });
+        new Dictionary<string, object?>
+        {
+            ["nights"] = new[] { new DateOnly(2027, 7, 10) },
+            ["capacity"] = 12,
+            ["code"] = "not-the-code",
+        });
 }
