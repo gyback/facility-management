@@ -33,7 +33,8 @@ public sealed class UnitOfWorkTests(SqlServerFixture sqlServer) : IAsyncLifetime
         {
             await using var context = _database.CreateContext();
             await context.Database.ExecuteSqlRawAsync(
-                "CREATE TABLE Notes (Id uniqueidentifier NOT NULL PRIMARY KEY, Text nvarchar(100) NOT NULL)",
+                "CREATE TABLE Notes (Id uniqueidentifier NOT NULL CONSTRAINT PK_Notes PRIMARY KEY, Text nvarchar(100) NOT NULL); " +
+                "CREATE UNIQUE INDEX IX_Notes_Text ON Notes (Text);",
                 cancellationToken);
 
             _services = AddInfrastructure(context.Database.GetConnectionString()!);
@@ -129,6 +130,51 @@ public sealed class UnitOfWorkTests(SqlServerFixture sqlServer) : IAsyncLifetime
         Assert.Equal(SimulatedPermanentError, exception.Number);
         Assert.Equal(1, attempts);
         Assert.Empty(await ReadNotesAsync());
+    }
+
+    [Fact]
+    public async Task A_duplicate_in_a_unique_index_is_a_conflict_and_not_retried()
+    {
+        await ExecuteAsync((context, _) =>
+        {
+            context.Add(new Note { Text = "Sauna" });
+            return Task.FromResult(0);
+        });
+        var attempts = 0;
+
+        var exception = await Assert.ThrowsAsync<ConflictException>(() => ExecuteAsync((context, _) =>
+        {
+            attempts++;
+            context.Add(new Note { Text = "Sauna" });
+            return Task.FromResult(0);
+        }));
+
+        Assert.Equal("IX_Notes_Text", exception.IndexName);
+        Assert.Null(exception.RuleCode);
+        Assert.DoesNotContain("Sauna", exception.Message);
+        Assert.Equal(1, attempts);
+        Assert.Equal(["Sauna"], await ReadNotesAsync());
+    }
+
+    [Fact]
+    public async Task A_duplicate_primary_key_is_a_conflict()
+    {
+        var id = Guid.NewGuid();
+        await ExecuteAsync((context, _) =>
+        {
+            context.Add(new Note { Id = id, Text = "first" });
+            return Task.FromResult(0);
+        });
+
+        var exception = await Assert.ThrowsAsync<ConflictException>(() => ExecuteAsync((context, _) =>
+        {
+            context.Add(new Note { Id = id, Text = "second" });
+            return Task.FromResult(0);
+        }));
+
+        Assert.Equal("PK_Notes", exception.IndexName);
+        Assert.Null(exception.RuleCode);
+        Assert.Equal(["first"], await ReadNotesAsync());
     }
 
     [Fact]
@@ -236,7 +282,9 @@ internal sealed class NoteModelCustomizer(ModelCustomizerDependencies dependenci
         modelBuilder.Entity<Note>(note =>
         {
             note.ToTable("Notes");
+            note.HasKey(entity => entity.Id).HasName("PK_Notes");
             note.Property(entity => entity.Text).HasMaxLength(100);
+            note.HasIndex(entity => entity.Text).IsUnique().HasDatabaseName("IX_Notes_Text");
         });
     }
 }

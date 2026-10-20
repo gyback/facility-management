@@ -16,9 +16,15 @@ internal sealed class UnitOfWork(AppDbContext context) : IUnitOfWork
     /// retried as well, without checking whether the commit reached the database. In the rare
     /// case that it did, the operation runs a second time: its changes are saved twice, or,
     /// when a unique index rejects the duplicate, the command fails although its first attempt
-    /// was committed. This is accepted until commands are made idempotent (#50).
+    /// was committed (a <see cref="ConflictException"/>). This is accepted until commands are made
+    /// idempotent (#50).
+    /// <para>
+    /// A unique index rejecting the changes (SQL Server error 2627 or 2601) is not transient, so
+    /// the execution strategy does not retry it; it is translated to a
+    /// <see cref="ConflictException"/> carrying the rule code from <see cref="UniqueIndexRules"/>.
+    /// </para>
     /// </remarks>
-    public Task<TResult> ExecuteAsync<TResult>(
+    public async Task<TResult> ExecuteAsync<TResult>(
         Func<CancellationToken, Task<TResult>> operation,
         CancellationToken cancellationToken = default)
     {
@@ -31,23 +37,32 @@ internal sealed class UnitOfWork(AppDbContext context) : IUnitOfWork
 
         var attempted = false;
 
-        return context.Database.CreateExecutionStrategy().ExecuteAsync(
-            async token =>
-            {
-                if (attempted)
+        try
+        {
+            return await context.Database.CreateExecutionStrategy().ExecuteAsync(
+                async token =>
                 {
-                    context.ChangeTracker.Clear();
-                }
+                    if (attempted)
+                    {
+                        context.ChangeTracker.Clear();
+                    }
 
-                attempted = true;
+                    attempted = true;
 
-                await using var transaction = await context.Database.BeginTransactionAsync(token);
-                var result = await operation(token);
-                await context.SaveChangesAsync(token);
-                await transaction.CommitAsync(token);
+                    await using var transaction = await context.Database.BeginTransactionAsync(token);
+                    var result = await operation(token);
+                    await context.SaveChangesAsync(token);
+                    await transaction.CommitAsync(token);
 
-                return result;
-            },
-            cancellationToken);
+                    return result;
+                },
+                cancellationToken);
+        }
+        catch (DbUpdateException exception) when (UniqueIndexViolation.TryGetIndexName(exception, out var indexName))
+        {
+            // Caught outside the strategy, so the strategy still sees the original error and
+            // decides not to retry it.
+            throw new ConflictException(UniqueIndexRules.FindRuleCode(indexName), indexName, exception);
+        }
     }
 }
