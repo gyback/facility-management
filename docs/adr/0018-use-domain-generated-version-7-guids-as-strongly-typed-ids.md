@@ -1,6 +1,6 @@
 # ADR-0018: Use domain-generated version 7 GUIDs as strongly typed IDs
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-20
 - **Deciders:** Gustav Gybäck (sole developer)
 
