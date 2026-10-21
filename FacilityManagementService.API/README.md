@@ -37,7 +37,7 @@ internal static class StayEndpoints
         CancellationToken cancellationToken)
     {
         var outcome = await handler.HandleAsync(request.ToCommand(facilityId), cancellationToken);
-        return TypedResults.Created($"/stays/{outcome.Value}", CreatedResponse.From(outcome));
+        return TypedResults.Created($"/stays/{outcome.Value.Value}", CreatedResponse.From(outcome));
     }
 }
 ```
@@ -86,7 +86,13 @@ internal static class StayEndpoints
 - Property names are camelCase, and every declared property is always
   present, `null` when it has no value. Enums are camelCase strings. Dates
   without a time are `yyyy-MM-dd`. Points in time are ISO 8601 in UTC with a
-  `Z`; convert in `From(...)`. Ids are strings.
+  `Z`; convert in `From(...)`.
+- Ids are `Guid`s in contracts, so they are strings with format `uuid` on
+  the wire. Strongly typed ids
+  ([ADR-0018](../docs/adr/0018-use-domain-generated-version-7-guids-as-strongly-typed-ids.md))
+  never appear in a contract: `ToCommand(...)` wraps route values and
+  request properties with `StayId.From(...)`, and `From(...)` on the
+  response unwraps `.Value`.
 - Validation stays in Application validators; there are no data
   annotations. The API only rejects a body it cannot parse, or a query
   string value of the wrong type, as `malformed-request`.

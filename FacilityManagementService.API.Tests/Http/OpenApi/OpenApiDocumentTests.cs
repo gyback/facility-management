@@ -31,8 +31,11 @@ public sealed class OpenApiDocumentTests : IAsyncLifetime
 
     public ValueTask DisposeAsync() => _app.DisposeAsync();
 
-    private static Created<CreatedResponse> CreateThing() =>
-        TypedResults.Created("/things/1", CreatedResponse.From(1));
+    private static Created<CreatedResponse> CreateThing()
+    {
+        var id = ThingId.New();
+        return TypedResults.Created($"/things/{id.Value}", CreatedResponse.From(id));
+    }
 
     private JsonElement Schemas => _document.GetProperty("components").GetProperty("schemas");
 
@@ -106,6 +109,15 @@ public sealed class OpenApiDocumentTests : IAsyncLifetime
         Assert.Equal(
             ["id", "warnings"],
             Schemas.GetProperty(nameof(CreatedResponse)).GetProperty("required").EnumerateArray().Select(name => name.GetString()).Order());
+
+    [Fact]
+    public void The_created_responses_id_is_a_uuid_string()
+    {
+        var id = Schemas.GetProperty(nameof(CreatedResponse)).GetProperty("properties").GetProperty("id");
+
+        Assert.Equal("string", id.GetProperty("type").GetString());
+        Assert.Equal("uuid", id.GetProperty("format").GetString());
+    }
 
     private static IEnumerable<string?> Enum(JsonElement schema) =>
         schema.GetProperty("enum").EnumerateArray().Select(value => value.GetString());

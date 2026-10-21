@@ -21,9 +21,9 @@ public sealed class CommandResponseTests
     [Fact]
     public void A_created_response_has_the_id_as_a_string_and_empty_warnings()
     {
-        var id = Guid.Parse("6f1c9d0e-4b9a-4f57-9c1e-2a4b8f3d7e10");
+        var id = ThingId.From(Guid.Parse("6f1c9d0e-4b9a-4f57-9c1e-2a4b8f3d7e10"));
 
-        var json = JsonSerializer.Serialize(CreatedResponse.From(new Outcome<Guid>(id)), WireOptions);
+        var json = JsonSerializer.Serialize(CreatedResponse.From(new Outcome<ThingId>(id)), WireOptions);
 
         Assert.Equal("""{"id":"6f1c9d0e-4b9a-4f57-9c1e-2a4b8f3d7e10","warnings":[]}""", json);
     }
