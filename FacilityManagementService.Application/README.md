@@ -61,7 +61,8 @@ contain only the use case itself. The order is fixed in
 | 4. Handler | | |
 
 - **Logging** records the message type, duration and outcome (handled,
-  rejected by validation, or failed). It never logs the message contents,
+  rejected by validation, refused by a domain rule or a unique index, or
+  failed). It never logs the message contents,
   which may contain personal data.
 - **Validation** runs every `IValidator<TMessage>` and throws a
   `ValidationException` with all errors before anything else happens. Add a
@@ -81,11 +82,60 @@ internal sealed class CreateStayValidator : IValidator<CreateStay>
     {
         if (command.To <= command.From)
         {
-            yield return new ValidationError(nameof(CreateStay.To), "A stay must end after it starts.");
+            yield return ValidationError.MustBeAfter(nameof(CreateStay.To), nameof(CreateStay.From));
         }
     }
 }
 ```
+
+### Validation codes
+
+Every `ValidationError` has a `Code` from the shared set in `ValidationCodes`
+(`required`, `too-long`, `out-of-range`, `must-be-after`), English `Message`
+for developers and the typed `Parameters` its text needs, e.g. `maxLength`
+([ADR-0017](../docs/adr/0017-use-minimal-apis-with-problem-details-warnings-and-idempotency-keys.md)).
+The frontend translates the code; the message is never shown to users and
+must never quote user input.
+
+- Create errors with the factory for their code, e.g.
+  `ValidationError.TooLong(nameof(AddComment.Body), 4000)`, rather than the
+  constructor.
+- Add a code to `ValidationCodes`, with a factory, only when no existing one
+  fits. Each code needs an entry in the catalogue in the
+  [API README](../FacilityManagementService.API/README.md#validation-codes).
+
+## Results, warnings and refusals
+
+A command that succeeds but has something to tell the user returns
+`Outcome<T>`: its value plus a list of `Warning`s
+([ADR-0017](../docs/adr/0017-use-minimal-apis-with-problem-details-warnings-and-idempotency-keys.md)).
+A warning means the command was committed; it is information, not a
+question. Commands that cannot warn return their result as before.
+
+```csharp
+public sealed record CreateStay(...) : ICommand<Outcome<StayId>>;
+
+public sealed record CapacityExceededWarning(IReadOnlyList<DateOnly> Nights, int Capacity) : Warning
+{
+    public override string Code => WarningCodes.CapacityExceeded;
+    public override string Message => $"{Nights.Count} nights exceed the facility's capacity of {Capacity}.";
+}
+```
+
+Each kind of warning is a `Warning` subtype with typed data and a code from
+`WarningCodes`. The API maps it to a response contract and lists it in its
+catalogue.
+
+Failures are thrown, never returned:
+
+- `ValidationException` from the validation decorator;
+- a `DomainRuleException` subclass (Domain) when a rule refuses the change
+  given the current state, carrying a code from `RuleCodes`;
+- `ConflictException` from `IUnitOfWork` when a unique index rejects the
+  commit, carrying the rule code of the index if it has one.
+
+The API maps each to a problem response; see the
+[API README](../FacilityManagementService.API/README.md).
 
 ## Data access
 

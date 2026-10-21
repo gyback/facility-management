@@ -1,6 +1,7 @@
 using FacilityManagementService.Application.Messaging;
 using FacilityManagementService.Application.Persistence;
 using FacilityManagementService.Application.Validation;
+using FacilityManagementService.Domain.Rules;
 
 namespace FacilityManagementService.Application.Tests.Messaging;
 
@@ -21,11 +22,17 @@ internal sealed class CreateThingHandler(Journal journal) : ICommandHandler<Crea
         journal.Entries.Add("handle");
         cancellationToken.ThrowIfCancellationRequested();
 
-        return command.Name == "explode"
-            ? throw new InvalidOperationException("Boom.")
-            : Task.FromResult(Guid.NewGuid());
+        return command.Name switch
+        {
+            "explode" => throw new InvalidOperationException("Boom."),
+            "refuse" => throw new ThingRuleException(),
+            "conflict" => throw new ConflictException(null, "IX_Things_Name", new InvalidOperationException("Duplicate.")),
+            _ => Task.FromResult(Guid.NewGuid()),
+        };
     }
 }
+
+internal sealed class ThingRuleException() : DomainRuleException("thing-refused", "The thing was refused.");
 
 internal sealed class CreateThingValidator(Journal journal) : IValidator<CreateThing>
 {
@@ -35,7 +42,7 @@ internal sealed class CreateThingValidator(Journal journal) : IValidator<CreateT
 
         if (string.IsNullOrWhiteSpace(instance.Name))
         {
-            yield return new ValidationError(nameof(CreateThing.Name), "Name is required.");
+            yield return ValidationError.Required(nameof(CreateThing.Name));
         }
     }
 }
@@ -60,7 +67,7 @@ internal sealed class GetThingValidator(Journal journal) : IValidator<GetThing>
 
         if (string.IsNullOrWhiteSpace(instance.Name))
         {
-            yield return new ValidationError(nameof(GetThing.Name), "Name is required.");
+            yield return ValidationError.Required(nameof(GetThing.Name));
         }
     }
 }

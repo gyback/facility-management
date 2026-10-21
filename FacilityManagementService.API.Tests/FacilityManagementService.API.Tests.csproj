@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <ItemGroup>
+        <ProjectReference Include="..\FacilityManagementService.API\FacilityManagementService.API.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.12" />
+        <PackageReference Include="Microsoft.Extensions.Diagnostics.Testing" Version="10.10.0" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- The catalogue test checks the README against the codes. -->
+        <None Include="..\FacilityManagementService.API\README.md" Link="README.md" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
+</Project>
