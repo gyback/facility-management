@@ -1,3 +1,5 @@
+using FacilityManagementService.Domain.Entities;
+using FacilityManagementService.Infrastructure.Persistence.Conventions;
 using Microsoft.EntityFrameworkCore;
 
 namespace FacilityManagementService.Infrastructure.Persistence;
@@ -9,6 +11,12 @@ namespace FacilityManagementService.Infrastructure.Persistence;
 /// </summary>
 internal sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
+    /// <summary>
+    /// Maps every strongly typed id in Domain by convention (ADR-0018).
+    /// </summary>
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder) =>
+        configurationBuilder.AddEntityIdConventions(typeof(IEntityId<>).Assembly);
+
     /// <summary>
     /// Applies every <see cref="IEntityTypeConfiguration{TEntity}"/> in this assembly, so an
     /// entity is mapped by adding its configuration class next to its repository.
