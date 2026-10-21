@@ -78,15 +78,16 @@ internal sealed class ProbeShelf : AggregateRoot<ProbeShelfId>
 internal sealed class ProbeBook : Entity<ProbeBookId>
 {
     public ProbeBook(ProbeShelfId shelfId, string title, ProbeBookId? previousEditionId)
-        : base(ProbeBookId.New())
+        : this(ProbeBookId.New())
     {
         ShelfId = shelfId;
         Title = title;
         PreviousEditionId = previousEditionId;
     }
 
-    // For EF Core.
-    private ProbeBook()
+    // For EF Core, which binds the id parameter to the key and sets the rest afterwards.
+    private ProbeBook(ProbeBookId id)
+        : base(id)
     {
     }
 

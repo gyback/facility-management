@@ -62,7 +62,7 @@ public sealed class ReadDbContextTests
         public static PartId From(Guid value) => new(value);
     }
 
-    private sealed class Machine : AggregateRoot<MachineId>;
+    private sealed class Machine(MachineId id) : AggregateRoot<MachineId>(id);
 
-    private sealed class Part : Entity<PartId>;
+    private sealed class Part(PartId id) : Entity<PartId>(id);
 }

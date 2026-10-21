@@ -46,6 +46,10 @@ public readonly record struct StayId(Guid Value) : IEntityId<StayId>
   the base constructor; the id never changes afterwards. A handler that
   creates related aggregates creates them in order and passes ids along:
   `var thread = CommentThread.Start(); var stay = Stay.Book(..., thread.Id);`.
+- `Entity<TId>` has no parameterless constructor, so no entity can exist with
+  an empty id. Give each entity a private constructor that takes only its id
+  and passes it to the base; EF Core binds it to the key when it loads the
+  entity and sets the rest of the state afterwards.
 - Commands, queries, repository methods, domain methods and read models take
   typed ids. In Domain and Application a raw `Guid` for an entity's identity
   appears only inside an id type.

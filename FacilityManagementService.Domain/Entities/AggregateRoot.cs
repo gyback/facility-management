@@ -13,9 +13,4 @@ public abstract class AggregateRoot<TId> : Entity<TId>
         : base(id)
     {
     }
-
-    /// <inheritdoc cref="Entity{TId}()"/>
-    protected AggregateRoot()
-    {
-    }
 }
