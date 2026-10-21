@@ -66,6 +66,34 @@ public sealed class EntityIdConventionTests
     }
 
     [Fact]
+    public void The_check_reports_an_id_key_generated_by_the_store()
+    {
+        using var context = new GeneratedBookKeyLibraryContext();
+
+        Assert.Equal(
+            [$"{nameof(Book)}.{nameof(Book.Id)} is a key generated {ValueGenerated.OnAdd}"],
+            Problems(DesignTimeModel(context)));
+    }
+
+    // Why a generated id key is a problem (ADR-0018): EF Core takes a child with its key already
+    // set for an existing row, and SaveChanges updates a row that does not exist.
+    [Fact]
+    public void A_new_child_found_through_a_navigation_is_added()
+    {
+        using var context = new LibraryContext();
+
+        Assert.Equal(EntityState.Added, StateOfANewChildOfATrackedParent(context));
+    }
+
+    [Fact]
+    public void A_new_child_with_a_generated_key_found_through_a_navigation_is_not_added()
+    {
+        using var context = new GeneratedBookKeyLibraryContext();
+
+        Assert.NotEqual(EntityState.Added, StateOfANewChildOfATrackedParent(context));
+    }
+
+    [Fact]
     public void The_converter_round_trips_an_id()
     {
         var converter = new EntityIdConverter<BookId>();
@@ -78,6 +106,17 @@ public sealed class EntityIdConventionTests
     // The design-time model keeps every annotation, such as column types, that the runtime
     // model may drop.
     private static IModel DesignTimeModel(DbContext context) => context.GetService<IDesignTimeModel>().Model;
+
+    private static EntityState StateOfANewChildOfATrackedParent(DbContext context)
+    {
+        var shelf = Shelf.Create();
+        context.Attach(shelf);
+
+        var book = shelf.Add();
+        context.ChangeTracker.DetectChanges();
+
+        return context.Entry(book).State;
+    }
 
     private static List<string> Problems(IModel model)
     {
@@ -108,7 +147,7 @@ public sealed class EntityIdConventionTests
         return problems;
     }
 
-    private sealed class LibraryContext : DbContext
+    private class LibraryContext : DbContext
     {
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) =>
             optionsBuilder.UseSqlServer();
@@ -123,22 +162,44 @@ public sealed class EntityIdConventionTests
         }
     }
 
+    // A separate type, since EF Core caches one model per context type. An explicit
+    // configuration outranks the convention, so only the model check can catch this.
+    private sealed class GeneratedBookKeyLibraryContext : LibraryContext
+    {
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<Book>().Property(book => book.Id).ValueGeneratedOnAdd();
+        }
+    }
+
     private sealed class Shelf : AggregateRoot<ShelfId>
     {
-        private Shelf()
+        private Shelf(ShelfId id)
+            : base(id)
         {
         }
 
         public List<Book> Books { get; } = [];
+
+        public static Shelf Create() => new(ShelfId.New());
+
+        public Book Add()
+        {
+            var book = new Book(BookId.New()) { ShelfId = Id };
+            Books.Add(book);
+            return book;
+        }
     }
 
     private sealed class Book : Entity<BookId>
     {
-        private Book()
+        public Book(BookId id)
+            : base(id)
         {
         }
 
-        public ShelfId ShelfId { get; private init; }
+        public ShelfId ShelfId { get; init; }
 
         public BookId? PreviousEditionId { get; private init; }
     }

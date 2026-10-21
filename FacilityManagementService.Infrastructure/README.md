@@ -27,11 +27,13 @@ which maps every `IEntityId<>` in Domain with no per-entity configuration:
 
 - Every property of an id type, keys, foreign keys and nullable ids alike,
   gets `EntityIdConverter<TId>` and is stored as `uniqueidentifier`.
-- `EntityIdKeyConvention` marks every id key `ValueGenerated.Never`: the
-  domain creates ids, and EF Core must insert, not update, a new entity it
-  finds through a navigation with its key already set.
+- Every id key is `ValueGenerated.Never`: the domain creates ids, and EF Core
+  must insert, not update, a new entity it finds through a navigation with
+  its key already set. EF Core already defaults converted keys to this;
+  `EntityIdKeyConvention` pins it in case that default changes.
 - Entity configurations never mention an id's conversion or value
-  generation.
+  generation. An explicit `ValueGeneratedOnAdd()` would outrank the
+  convention, and the model check below fails on it.
 - **Compare whole ids in queries** (`s.FacilityId == facilityId`,
   `ids.Contains(s.Id)`). Never use `.Value` inside LINQ: EF Core cannot
   translate it on a converted property, and no test catches it.

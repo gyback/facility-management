@@ -9,9 +9,17 @@ namespace FacilityManagementService.Infrastructure.Persistence.Conventions;
 /// creates ids (ADR-0018).
 /// </summary>
 /// <remarks>
-/// Required, not a detail: if EF Core believes a key is generated, a new entity whose key is
+/// <para>
+/// The behaviour matters: if EF Core believes a key is generated, a new entity whose key is
 /// already set and that it discovers through a navigation (a new comment added to a tracked
 /// thread) is treated as existing and updated instead of inserted.
+/// </para>
+/// <para>
+/// The convention itself is a safeguard: EF Core already defaults a key with a value
+/// converter to <see cref="ValueGenerated.Never"/>, and this pins that should the default
+/// change. It cannot override an explicit <c>ValueGeneratedOnAdd()</c> in an entity
+/// configuration; <c>EntityIdConventionTests</c> checks the finished model for that.
+/// </para>
 /// </remarks>
 internal sealed class EntityIdKeyConvention : IModelFinalizingConvention
 {
