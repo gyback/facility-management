@@ -14,6 +14,7 @@ internal static class ProblemCodes
     public const string IdempotencyKeyMissing = "idempotency-key-missing";
     public const string IdempotencyKeyInvalid = "idempotency-key-invalid";
     public const string Unauthenticated = "unauthenticated";
+    public const string UserNotRegistered = "user-not-registered";
     public const string Forbidden = "forbidden";
     public const string NotFound = "not-found";
     public const string MethodNotAllowed = "method-not-allowed";

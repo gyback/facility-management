@@ -1,5 +1,7 @@
 using System.Text.Json;
+using FacilityManagementService.Application.Messaging;
 using FacilityManagementService.Application.Persistence;
+using FacilityManagementService.Application.Users;
 using FacilityManagementService.Application.Validation;
 using FacilityManagementService.Domain.Rules;
 using Microsoft.AspNetCore.Diagnostics;
@@ -52,6 +54,18 @@ internal sealed partial class ApiExceptionHandler(IHostEnvironment environment, 
             ProblemCodes.ValidationFailed,
             "The request failed validation.",
             [new("errors", ToErrors(validation.Errors))]),
+        UnregisteredUserException => new(
+            StatusCodes.Status403Forbidden,
+            ProblemCodes.UserNotRegistered,
+            "The signed-in identity is not linked to a user."),
+        ForbiddenException => new(
+            StatusCodes.Status403Forbidden,
+            ProblemCodes.Forbidden,
+            "The caller is not allowed to do this."),
+        NotFoundException => new(
+            StatusCodes.Status404NotFound,
+            ProblemCodes.NotFound,
+            "The resource was not found."),
         DomainRuleException rule => new(
             StatusCodes.Status409Conflict,
             rule.Code,
