@@ -1,0 +1,41 @@
+version: 2
+updates:
+  - package-ecosystem: "nuget"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      dotnet-framework:
+        patterns:
+          - "Microsoft.AspNetCore.*"
+          - "Microsoft.EntityFrameworkCore*"
+          - "Microsoft.Extensions.*"
+          - "dotnet-ef"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # Keep framework-versioned Microsoft packages on the runtime's major version (ADR-0012).
+      - dependency-name: "Microsoft.AspNetCore.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.EntityFrameworkCore*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.Extensions.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "dotnet-ef"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "docker"
+    directory: "/FacilityManagementService.API"
+    schedule:
+      interval: "weekly"
+    ignore:
+      # Keep the .NET SDK and ASP.NET runtime images on the current LTS major version (ADR-0012).
+      - dependency-name: "mcr.microsoft.com/dotnet/*"
+        update-types: ["version-update:semver-major"]
+
+  # Uncomment once .github/workflows/ is added in #16.
+  # - package-ecosystem: "github-actions"
+  #   directory: "/"
+  #   schedule:
+  #     interval: "weekly"
