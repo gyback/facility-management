@@ -1,0 +1,320 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  # Rebuild and push the container image weekly so floating .NET 10 base image tags
+  # pick up monthly security patches even while the repository is dormant (ADR-0012).
+  schedule:
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/api
+
+jobs:
+  test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build solution
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Run unit and integration tests
+        run: dotnet test --no-build --configuration Release
+
+  build:
+    name: Build and push image
+    needs: [test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image-ref: ${{ steps.image.outputs.image-ref }}
+      image-digest: ${{ steps.build-and-push.outputs.digest }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push container image
+        id: build-and-push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: FacilityManagementService.API/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Export immutable image reference
+        id: image
+        if: github.event_name != 'pull_request'
+        run: |
+          IMAGE_REPO=$(echo "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" | tr '[:upper:]' '[:lower:]')
+          echo "image-ref=${IMAGE_REPO}@${{ steps.build-and-push.outputs.digest }}" >> "$GITHUB_OUTPUT"
+
+  terraform-plan:
+    name: Terraform validate and plan
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      pull-requests: write
+    env:
+      ARM_USE_OIDC: "true"
+      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for changes in infra/
+        id: changes
+        run: |
+          if [ ! -d "infra" ] || [ -z "$(find infra -maxdepth 2 -name '*.tf' -print -quit)" ]; then
+            echo "has-infra=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          CHANGED=$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}" -- infra/)
+          if [ -n "$CHANGED" ]; then
+            echo "has-infra=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has-infra=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Terraform
+        if: steps.changes.outputs.has-infra == 'true'
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Terraform fmt
+        if: steps.changes.outputs.has-infra == 'true'
+        working-directory: infra
+        run: terraform fmt -check -recursive
+
+      - name: Terraform validate (offline)
+        if: steps.changes.outputs.has-infra == 'true' && vars.AZURE_CLIENT_ID == ''
+        working-directory: infra
+        run: |
+          terraform init -backend=false
+          terraform validate
+
+      - name: Log in to Azure with OIDC
+        if: steps.changes.outputs.has-infra == 'true' && vars.AZURE_CLIENT_ID != ''
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terraform init, validate and plan
+        id: plan
+        if: steps.changes.outputs.has-infra == 'true' && vars.AZURE_CLIENT_ID != ''
+        working-directory: infra
+        run: |
+          terraform init -input=false
+          terraform validate
+          terraform plan -input=false -no-color -out=tfplan | tee plan.txt
+
+      - name: Post Terraform plan to pull request
+        if: steps.changes.outputs.has-infra == 'true' && vars.AZURE_CLIENT_ID != ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('infra/plan.txt', 'utf8');
+            const maxLen = 60000;
+            const truncated = plan.length > maxLen
+              ? plan.slice(0, maxLen) + '\n... (truncated)'
+              : plan;
+            const marker = '<!-- terraform-plan-comment -->';
+            const body = `${marker}\n### Terraform Plan\n\n\`\`\`terraform\n${truncated}\n\`\`\``;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
+  deploy-staging:
+    name: Deploy to staging (homelab)
+    needs: [build]
+    if: >-
+      github.event_name != 'pull_request' &&
+      github.ref == 'refs/heads/master' &&
+      vars.STAGING_ENABLED == 'true'
+    runs-on: [self-hosted, homelab]
+    environment: staging
+    env:
+      API_IMAGE: ${{ needs.build.outputs.image-ref }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull images
+        run: docker compose pull
+
+      - name: Run database migrations
+        # Runs the one-shot migration service once defined in docker-compose.yml (#11, #12).
+        run: |
+          if docker compose config --services | grep -qx "migrate"; then
+            docker compose run --rm migrate
+          fi
+
+      - name: Update staging stack
+        run: docker compose up -d --remove-orphans
+
+  deploy-production:
+    name: Deploy to production (Azure)
+    needs: [build, deploy-staging]
+    if: >-
+      !failure() &&
+      !cancelled() &&
+      github.event_name != 'pull_request' &&
+      github.ref == 'refs/heads/master' &&
+      (needs.deploy-staging.result == 'success' || needs.deploy-staging.result == 'skipped') &&
+      vars.AZURE_CLIENT_ID != ''
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ARM_USE_OIDC: "true"
+      ARM_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      ARM_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      ARM_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      API_IMAGE: ${{ needs.build.outputs.image-ref }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure with OIDC
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Setup Terraform
+        if: hashFiles('infra/*.tf') != ''
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Terraform init and apply
+        if: hashFiles('infra/*.tf') != ''
+        working-directory: infra
+        run: |
+          terraform init -input=false
+          terraform apply -input=false -auto-approve
+
+      - name: Run pre-deploy database migration job
+        if: vars.AZURE_MIGRATION_JOB_NAME != ''
+        run: |
+          az containerapp job update \
+            --name "${{ vars.AZURE_MIGRATION_JOB_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --image "${{ env.API_IMAGE }}"
+          EXECUTION_NAME=$(az containerapp job start \
+            --name "${{ vars.AZURE_MIGRATION_JOB_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --query name -o tsv)
+          for _ in $(seq 1 60); do
+            STATUS=$(az containerapp job execution show \
+              --name "${{ vars.AZURE_MIGRATION_JOB_NAME }}" \
+              --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+              --job-execution-name "$EXECUTION_NAME" \
+              --query properties.status -o tsv)
+            if [ "$STATUS" = "Succeeded" ]; then
+              exit 0
+            elif [ "$STATUS" = "Failed" ]; then
+              echo "Migration job execution $EXECUTION_NAME failed." >&2
+              exit 1
+            fi
+            sleep 5
+          done
+          echo "Timed out waiting for migration job execution $EXECUTION_NAME." >&2
+          exit 1
+
+      - name: Deploy API image to Azure Container Apps
+        if: vars.AZURE_CONTAINER_APP_NAME != ''
+        run: |
+          az containerapp update \
+            --name "${{ vars.AZURE_CONTAINER_APP_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --image "${{ env.API_IMAGE }}"
