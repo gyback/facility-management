@@ -25,6 +25,9 @@ public interface IUnitOfWork
     /// command stays one use case in one transaction.
     /// </para>
     /// </remarks>
+    /// <exception cref="ConflictException">
+    /// A unique index rejected the changes. Not retried: the same changes would fail again.
+    /// </exception>
     /// <exception cref="InvalidOperationException">
     /// Called while a unit of work is already running in the same scope.
     /// </exception>

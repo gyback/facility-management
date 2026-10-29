@@ -1,6 +1,12 @@
 @FacilityManagementService.API_HostAddress = http://localhost:5102
 
-GET {{FacilityManagementService.API_HostAddress}}/weatherforecast/
+# The OpenAPI document, which lists every endpoint.
+GET {{FacilityManagementService.API_HostAddress}}/openapi/v1.json
 Accept: application/json
 
 ###
+
+# Every POST needs an Idempotency-Key header (ADR-0017), e.g.:
+# POST {{FacilityManagementService.API_HostAddress}}/facilities
+# Content-Type: application/json
+# Idempotency-Key: {{$random.uuid}}

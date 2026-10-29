@@ -1,5 +1,6 @@
 using FacilityManagementService.Application.Messaging;
 using FacilityManagementService.Application.Messaging.Decorators;
+using FacilityManagementService.Application.Persistence;
 using FacilityManagementService.Application.Validation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -56,7 +57,7 @@ public sealed class HandlerDecoratorTests : IDisposable
         var exception = await Assert.ThrowsAsync<ValidationException>(() =>
             handler.HandleAsync(new CreateThing(""), TestContext.Current.CancellationToken));
 
-        Assert.Equal([new ValidationError(nameof(CreateThing.Name), "Name is required.")], exception.Errors);
+        Assert.Equal([ValidationError.Required(nameof(CreateThing.Name))], exception.Errors);
         Assert.Equal(["validate"], Journal);
         var log = Assert.Single(Logs);
         Assert.Equal(LogLevel.Warning, log.Level);
@@ -75,6 +76,25 @@ public sealed class HandlerDecoratorTests : IDisposable
         var log = Assert.Single(Logs);
         Assert.Equal(LogLevel.Error, log.Level);
         Assert.Same(exception, log.Exception);
+    }
+
+    [Theory]
+    [InlineData("refuse", typeof(ThingRuleException), "thing-refused")]
+    [InlineData("conflict", typeof(ConflictException), "conflict")]
+    public async Task A_refused_command_is_rolled_back_and_logged_as_a_warning(string name, Type exceptionType, string code)
+    {
+        var handler = Resolve<ICommandHandler<CreateThing, Guid>>();
+
+        var exception = await Assert.ThrowsAnyAsync<Exception>(() =>
+            handler.HandleAsync(new CreateThing(name), TestContext.Current.CancellationToken));
+
+        Assert.IsType(exceptionType, exception);
+        Assert.Equal(["validate", "begin", "handle", "rollback"], Journal);
+        var log = Assert.Single(Logs);
+        Assert.Equal(LogLevel.Warning, log.Level);
+        Assert.Null(log.Exception);
+        Assert.StartsWith($"Refused {nameof(CreateThing)} after ", log.Message);
+        Assert.EndsWith($" ms with {code}", log.Message);
     }
 
     [Fact]
@@ -127,7 +147,7 @@ public sealed class HandlerDecoratorTests : IDisposable
     [Fact]
     public void The_validation_exception_message_does_not_contain_the_error_messages()
     {
-        var exception = new ValidationException([new ValidationError("Email", "'secret@example.com' is invalid.")]);
+        var exception = new ValidationException([new ValidationError("Email", "invalid", "'secret@example.com' is invalid.")]);
 
         Assert.Equal("Validation failed with 1 errors.", exception.Message);
     }

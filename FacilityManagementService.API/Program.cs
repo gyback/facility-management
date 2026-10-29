@@ -1,28 +1,17 @@
+using FacilityManagementService.API;
 using FacilityManagementService.Application;
 using FacilityManagementService.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure();
-builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
+builder.Services.AddApi();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
+app.UseApi();
 
-app.UseHttpsRedirection();
-
-app.UseAuthorization();
-
-app.MapControllers();
+// Each feature maps its endpoints here, e.g. app.MapFacilityEndpoints(); see the README.
 
 app.Run();

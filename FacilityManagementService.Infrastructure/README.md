@@ -11,9 +11,17 @@ registers everything below.
 | Type | Role |
 |---|---|
 | `AppDbContext` | The EF Core model. Applies every `IEntityTypeConfiguration<T>` in this assembly and the strongly typed id conventions. Internal, so nothing outside Infrastructure can reach it. |
-| `UnitOfWork` : `IUnitOfWork` | Runs each command in one transaction under the SQL Server retrying execution strategy, and is the only caller of `SaveChanges`. On a transient failure it clears the change tracker and re-runs the whole command. Units of work do not nest: running a command from inside another throws. |
+| `UnitOfWork` : `IUnitOfWork` | Runs each command in one transaction under the SQL Server retrying execution strategy, and is the only caller of `SaveChanges`. On a transient failure it clears the change tracker and re-runs the whole command. A unique index rejecting the changes (SQL Server error 2627 or 2601) is not retried; it becomes a `ConflictException` (see below). Units of work do not nest: running a command from inside another throws. |
 | `ReadDbContext` : `IReadDbContext` | Untracked `IQueryable<T>` per aggregate root for query handlers. |
 | Repositories | One per aggregate root, added with its feature. They stage changes in the scoped `AppDbContext` and never save. |
+
+A unique index that enforces a domain rule, such as exclusive nights
+(ADR-0005), catches the race that the handler's own check cannot. So that
+the client gets the same `409` either way
+([ADR-0017](../docs/adr/0017-use-minimal-apis-with-problem-details-warnings-and-idempotency-keys.md)),
+name the index explicitly with `HasDatabaseName(...)` and map that name to
+the rule's `RuleCodes` constant in `UniqueIndexRules`. An index not in the
+map gives the generic `conflict` problem.
 
 Map an entity by adding an `IEntityTypeConfiguration<T>` in this project;
 keep it engine-neutral (ADR-0007, constraint 4).
@@ -84,6 +92,6 @@ database: the `Database` settings validation, the `AddInfrastructure()`
 registrations, the strongly typed id conventions and a check that the model
 has no changes missing a migration.
 `FacilityManagementService.IntegrationTests` runs `UnitOfWork` against SQL
-Server (commit, rollback, and the retry after a transient failure) and the
-strongly typed ids (saving, querying, nullable ids, and inserting a new child
-of a tracked parent).
+Server (commit, rollback, the retry after a transient failure, and the
+translation of unique-index violations) and the strongly typed ids (saving,
+querying, nullable ids, and inserting a new child of a tracked parent).
