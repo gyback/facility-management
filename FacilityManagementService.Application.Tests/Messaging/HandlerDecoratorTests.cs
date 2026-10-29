@@ -1,7 +1,9 @@
 using FacilityManagementService.Application.Messaging;
 using FacilityManagementService.Application.Messaging.Decorators;
 using FacilityManagementService.Application.Persistence;
+using FacilityManagementService.Application.Users;
 using FacilityManagementService.Application.Validation;
+using FacilityManagementService.Domain.Rules;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Testing;
@@ -79,6 +81,9 @@ public sealed class HandlerDecoratorTests : IDisposable
     }
 
     [Theory]
+    [InlineData("unregistered", typeof(UnregisteredUserException), "user-not-registered")]
+    [InlineData("forbidden", typeof(ForbiddenException), "forbidden")]
+    [InlineData("not-found", typeof(NotFoundException), "not-found")]
     [InlineData("refuse", typeof(ThingRuleException), "thing-refused")]
     [InlineData("conflict", typeof(ConflictException), "conflict")]
     public async Task A_refused_command_is_rolled_back_and_logged_as_a_warning(string name, Type exceptionType, string code)
