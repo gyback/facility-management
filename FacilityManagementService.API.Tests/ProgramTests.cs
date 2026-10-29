@@ -24,6 +24,10 @@ public sealed class ProgramTests : IAsyncLifetime
             .UseSetting("Database:Authentication", "Password")
             .UseSetting("Database:User", "user")
             .UseSetting("Database:Password", "password")
+            .UseSetting("Authentication:Authority", "https://auth.example.test")
+            .UseSetting("Authentication:Audience", "facility-management-api")
+            .UseSetting("Authentication:Provider", "entra")
+            .UseSetting("Authentication:SubjectClaim", "oid")
             .UseDefaultServiceProvider(options =>
             {
                 options.ValidateOnBuild = true;
@@ -49,9 +53,9 @@ public sealed class ProgramTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task An_unknown_route_is_a_not_found_problem()
+    public async Task An_unauthenticated_request_is_rejected_by_default()
     {
         await ProblemResponseTests.SendForProblemAsync(
-            _client, new HttpRequestMessage(HttpMethod.Get, "/nowhere"), HttpStatusCode.NotFound, "not-found");
+            _client, new HttpRequestMessage(HttpMethod.Get, "/nowhere"), HttpStatusCode.Unauthorized, "unauthenticated");
     }
 }

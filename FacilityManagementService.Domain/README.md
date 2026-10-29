@@ -59,3 +59,17 @@ public readonly record struct StayId(Guid Value) : IEntityId<StayId>
 - Something identified by its values rather than addressed on its own (e.g.
   the exclusive-nights rows of ADR-0005) has a composite key on those values
   and no id; it does not derive from `Entity<TId>`.
+
+## Rules and authorisation
+
+Domain methods throw when a rule is broken; they do not return error results
+([ADR-0017](../docs/adr/0017-use-minimal-apis-with-problem-details-warnings-and-idempotency-keys.md)):
+
+| Type (`Rules/`) | When | HTTP |
+|---|---|---|
+| `DomainRuleException` | A rule refuses the change given the current state, e.g. an exclusive stay overlaps another. Subclass per rule with a code from `RuleCodes`. | `409` with the rule's code |
+| `ForbiddenException` | The acting `UserId` is not allowed to make the change: wrong facility role, not the owner, or missing `CanCreateFacilities` ([ADR-0015](../docs/adr/0015-authenticate-with-entra-external-id-and-invitation-linked-users.md)). | `403 forbidden` |
+
+Domain code takes the acting `UserId` as an argument and never sees
+`ICurrentUser`. Membership in a facility is checked in the handler first,
+failing with `NotFoundException` (`404`) when the caller is not a member.

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using FacilityManagementService.Application.Persistence;
+using FacilityManagementService.Application.Users;
 using FacilityManagementService.Application.Validation;
 using FacilityManagementService.Domain.Rules;
 using Microsoft.Extensions.Logging;
@@ -31,6 +32,21 @@ internal static partial class HandlerLogging
         catch (ValidationException exception)
         {
             logger.Rejected(messageName, Stopwatch.GetElapsedTime(start).TotalMilliseconds, exception.Errors.Count);
+            throw;
+        }
+        catch (UnregisteredUserException)
+        {
+            logger.Refused(messageName, Stopwatch.GetElapsedTime(start).TotalMilliseconds, "user-not-registered");
+            throw;
+        }
+        catch (ForbiddenException)
+        {
+            logger.Refused(messageName, Stopwatch.GetElapsedTime(start).TotalMilliseconds, "forbidden");
+            throw;
+        }
+        catch (NotFoundException)
+        {
+            logger.Refused(messageName, Stopwatch.GetElapsedTime(start).TotalMilliseconds, "not-found");
             throw;
         }
         catch (DomainRuleException exception)

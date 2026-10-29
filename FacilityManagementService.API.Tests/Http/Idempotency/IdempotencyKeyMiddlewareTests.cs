@@ -20,7 +20,7 @@ public sealed class IdempotencyKeyMiddlewareTests : IAsyncLifetime
             app.MapDelete("/things", () => Results.Ok());
             app.MapGet("/things", () => Results.Ok());
         });
-        _client = _app.GetTestClient();
+        _client = _app.CreateClient();
     }
 
     public async ValueTask DisposeAsync()

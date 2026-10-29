@@ -3,13 +3,14 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using FacilityManagementService.API.Http.Problems;
+using FacilityManagementService.Application.Messaging;
 using FacilityManagementService.Application.Persistence;
+using FacilityManagementService.Application.Users;
 using FacilityManagementService.Application.Validation;
 using FacilityManagementService.Domain.Rules;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
-using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Hosting.Internal;
@@ -30,7 +31,7 @@ public sealed class ProblemResponseTests : IAsyncLifetime
     public async ValueTask InitializeAsync()
     {
         _app = await TestHost.StartAsync(MapEndpoints);
-        _client = _app.GetTestClient();
+        _client = _app.CreateClient();
     }
 
     public async ValueTask DisposeAsync()
@@ -47,6 +48,9 @@ public sealed class ProblemResponseTests : IAsyncLifetime
             ValidationError.TooLong("Body", 4000),
             ValidationError.MustBeAfter("Guests[0].To", "From"),
         ])));
+        app.MapGet("/unregistered", () => Throw(new UnregisteredUserException()));
+        app.MapGet("/forbidden", () => Throw(new ForbiddenException("Secret reason.")));
+        app.MapGet("/missing", () => Throw(new NotFoundException("Secret id.")));
         app.MapGet("/rule", () => Throw(new NightsFullException()));
         app.MapGet("/conflict", () => Throw(new ConflictException(null, "IX_Things_Name", new InvalidOperationException())));
         app.MapGet("/rule-conflict", () => Throw(new ConflictException("nights-full", "IX_Nights", new InvalidOperationException())));
@@ -70,6 +74,33 @@ public sealed class ProblemResponseTests : IAsyncLifetime
         Assert.Equal(
             """[{"code":"must-be-after","message":"Must be after from.","parameters":{"otherProperty":"from"}}]""",
             errors.GetProperty("guests[0].to").GetRawText());
+    }
+
+    [Fact]
+    public async Task An_unregistered_user_exception_is_a_user_not_registered_problem()
+    {
+        var problem = await GetProblemAsync("/unregistered", HttpStatusCode.Forbidden, "user-not-registered");
+
+        Assert.Equal("The signed-in identity is not registered.", problem.GetProperty("title").GetString());
+        Assert.Equal("The signed-in identity is not linked to a user.", problem.GetProperty("detail").GetString());
+    }
+
+    [Fact]
+    public async Task A_forbidden_exception_is_a_forbidden_problem_without_quoting_its_message()
+    {
+        var problem = await GetProblemAsync("/forbidden", HttpStatusCode.Forbidden, "forbidden");
+
+        Assert.Equal("The caller is not allowed to do this.", problem.GetProperty("detail").GetString());
+        Assert.DoesNotContain("Secret", problem.GetRawText());
+    }
+
+    [Fact]
+    public async Task A_not_found_exception_is_a_not_found_problem_without_quoting_its_message()
+    {
+        var problem = await GetProblemAsync("/missing", HttpStatusCode.NotFound, "not-found");
+
+        Assert.Equal("The resource was not found.", problem.GetProperty("detail").GetString());
+        Assert.DoesNotContain("Secret", problem.GetRawText());
     }
 
     [Fact]
@@ -111,7 +142,7 @@ public sealed class ProblemResponseTests : IAsyncLifetime
     public async Task An_unhandled_exception_shows_its_details_in_Development()
     {
         await using var app = await TestHost.StartAsync(MapEndpoints, environment: "Development");
-        using var client = app.GetTestClient();
+        using var client = app.CreateClient();
 
         var problem = await GetProblemAsync(client, "/boom", HttpStatusCode.InternalServerError, "internal-error");
 

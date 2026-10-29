@@ -22,6 +22,7 @@ internal static class ProblemCatalogue
         [ProblemCodes.IdempotencyKeyMissing] = "The Idempotency-Key header is missing.",
         [ProblemCodes.IdempotencyKeyInvalid] = "The Idempotency-Key header is invalid.",
         [ProblemCodes.Unauthenticated] = "Authentication is required.",
+        [ProblemCodes.UserNotRegistered] = "The signed-in identity is not registered.",
         [ProblemCodes.Forbidden] = "The caller is not allowed to do this.",
         [ProblemCodes.NotFound] = "The resource was not found.",
         [ProblemCodes.MethodNotAllowed] = "The method is not allowed for this resource.",

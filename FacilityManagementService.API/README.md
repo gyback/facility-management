@@ -50,8 +50,8 @@ internal static class StayEndpoints
 - It returns `TypedResults` with a `Results<...>` return type, so OpenAPI
   learns every success response from the signature.
 - It declares the problems it can return with `.ProducesProblem(status)`.
-  Every operation also gets a `500`, and every `POST` a `400`, without
-  declaring them.
+  Every non-anonymous operation also gets `401` and `403`, every operation a
+  `500`, and every `POST` a `400`, without declaring them.
 - Its operation id (`WithName`) is the name of the command or query it
   calls, so the generated client uses the Application's vocabulary. A
   feature's routes share a `MapGroup` and an OpenAPI tag.
@@ -168,6 +168,36 @@ Adding a problem code means a constant in `ProblemCodes` (the API's own) or
 `RuleCodes` (Domain), and an entry in the catalogue below. A test fails until
 both match.
 
+## Authentication and authorisation
+
+Per [ADR-0015](../docs/adr/0015-authenticate-with-entra-external-id-and-invitation-linked-users.md),
+the API validates bearer access tokens with the standard JWT bearer handler,
+configured from the `Authentication` section and validated when the host
+starts:
+
+| Key | Value |
+|---|---|
+| `Authentication:Authority` | The OpenID Connect authority URL, e.g. the Entra External ID tenant URL in production or `http://localhost:8080/default` (the mock OIDC server, [#12](https://github.com/gyback/facility-management/issues/12)) in local development. |
+| `Authentication:Audience` | The expected `aud` claim of tokens for this API. |
+| `Authentication:Provider` | A short lower-case key for the provider, e.g. `entra` or `mock`, stored with linked identities instead of the token's `iss` claim. |
+| `Authentication:SubjectClaim` | The token claim that carries the stable user identifier: `oid` for Entra External ID, `sub` for other providers. |
+
+Inbound claim mapping is turned off so claim names are the ones in the token.
+After authentication and before authorisation, `CurrentUserMiddleware` pairs
+the configured `Provider` with the token's `SubjectClaim` (and optional `name`
+claim), looks up the linked `UserId` through `IUserIdentityLookup`, and stores
+both on the scoped `CurrentUser` (`ICurrentUser`).
+
+Every endpoint requires an authenticated caller whose identity is linked to a
+user (`401 unauthenticated` without a valid token, `403 user-not-registered`
+when the identity is not linked):
+
+- Endpoints that an unlinked caller must be able to call (`AcceptInvitation`
+  and reading one's own sign-in state) opt out with `.AllowUnregisteredUser()`.
+- Only `/openapi/v1.json` and the health probes use `.AllowAnonymous()`.
+- Per-facility membership and role checks live in the handlers and Domain, not
+  in API policies.
+
 ## Idempotency keys
 
 Every `POST` needs an `Idempotency-Key` header: 1 to 64 visible ASCII
@@ -233,14 +263,20 @@ ASCII characters.
 
 `401`. The request has no valid token.
 
+#### user-not-registered
+
+`403`. The caller is signed in, but their identity is not linked to a user.
+Ask a family member for an invitation.
+
 #### forbidden
 
-`403`. The caller is not allowed to do this.
+`403`. The caller is a member of the facility (or is signed in), but their
+role, ownership or capabilities do not allow the action.
 
 #### not-found
 
-`404`. The target does not exist, or the route does not match, e.g. an id
-that is not a GUID.
+`404`. The target does not exist, belongs to a facility the caller is not a
+member of, or the route does not match, e.g. an id that is not a GUID.
 
 #### method-not-allowed
 
