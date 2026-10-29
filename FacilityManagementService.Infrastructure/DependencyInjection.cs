@@ -1,4 +1,6 @@
 using FacilityManagementService.Application.Persistence;
+using FacilityManagementService.Application.Users;
+using FacilityManagementService.Infrastructure.Identity;
 using FacilityManagementService.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -10,7 +12,8 @@ namespace FacilityManagementService.Infrastructure;
 public static class DependencyInjection
 {
     /// <summary>
-    /// Registers the database, <see cref="IUnitOfWork"/>, <see cref="IReadDbContext"/> and
+    /// Registers the database, <see cref="IUnitOfWork"/>, <see cref="IReadDbContext"/>,
+    /// <see cref="ICurrentUser"/>, <see cref="IUserIdentityLookup"/> and
     /// <see cref="TimeProvider.System"/> as the application clock.
     /// </summary>
     /// <remarks>
@@ -34,6 +37,12 @@ public static class DependencyInjection
         // work see the same tracked changes.
         services.TryAddScoped<IUnitOfWork, UnitOfWork>();
         services.TryAddScoped<IReadDbContext, ReadDbContext>();
+
+        // Both resolve to the same scoped instance: the API populates CurrentUser and handlers
+        // read ICurrentUser.
+        services.TryAddScoped<CurrentUser>();
+        services.TryAddScoped<ICurrentUser>(provider => provider.GetRequiredService<CurrentUser>());
+        services.TryAddScoped<IUserIdentityLookup, UserIdentityLookup>();
 
         services.TryAddSingleton(TimeProvider.System);
 
