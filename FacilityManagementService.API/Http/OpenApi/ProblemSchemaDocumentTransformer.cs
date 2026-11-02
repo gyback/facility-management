@@ -1,7 +1,9 @@
 using System.Text.Json.Nodes;
+using FacilityManagementService.API.Http.Authentication;
 using FacilityManagementService.API.Http.Problems;
 using FacilityManagementService.Application.Validation;
 using FacilityManagementService.Domain.Rules;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.OpenApi;
 
@@ -14,10 +16,12 @@ namespace FacilityManagementService.API.Http.OpenApi;
 /// </summary>
 /// <remarks>
 /// Endpoints declare their problems with the built-in <c>.ProducesProblem(status)</c>; this
-/// replaces the schema of each such response. It also declares the <c>400</c> every <c>POST</c>
-/// can return for its idempotency key, and the <c>500</c> every operation can return.
+/// replaces the schema of each such response. It also declares the <c>401</c> and <c>403</c>
+/// responses from authentication and the fallback policy (ADR-0015), the <c>400</c> every
+/// <c>POST</c> can return for its idempotency key, and the <c>500</c> every operation can return.
 /// </remarks>
-internal sealed class ProblemSchemaDocumentTransformer : IOpenApiDocumentTransformer
+internal sealed class ProblemSchemaDocumentTransformer
+    : IOpenApiOperationTransformer, IOpenApiDocumentTransformer
 {
     private const string ProblemContentType = "application/problem+json";
 
@@ -28,6 +32,31 @@ internal sealed class ProblemSchemaDocumentTransformer : IOpenApiDocumentTransfo
 
     /// <summary>The framework's problem schemas, which <see cref="ProblemSchema"/> replaces.</summary>
     private static readonly string[] FrameworkProblemSchemas = ["ProblemDetails", "HttpValidationProblemDetails"];
+
+    public Task TransformAsync(
+        OpenApiOperation operation,
+        OpenApiOperationTransformerContext context,
+        CancellationToken cancellationToken)
+    {
+        var metadata = context.Description.ActionDescriptor.EndpointMetadata;
+
+        if (!metadata.OfType<IAllowAnonymous>().Any())
+        {
+            operation.Responses ??= new OpenApiResponses();
+            operation.Responses.TryAdd("401", ProblemResponse("Unauthorized"));
+
+            var allowsUnregistered = metadata
+                .OfType<IAuthorizeData>()
+                .Any(data => data.Policy == AuthorizationPolicies.AuthenticatedIdentity);
+
+            if (!allowsUnregistered)
+            {
+                operation.Responses.TryAdd("403", ProblemResponse("Forbidden"));
+            }
+        }
+
+        return Task.CompletedTask;
+    }
 
     public Task TransformAsync(
         OpenApiDocument document,

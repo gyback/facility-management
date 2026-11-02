@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using FacilityManagementService.API.Http.Authentication;
 using FacilityManagementService.API.Http.Problems;
 using FacilityManagementService.API.Http.Responses;
 using FacilityManagementService.Application.Validation;
@@ -23,6 +24,8 @@ public sealed class OpenApiDocumentTests : IAsyncLifetime
         {
             app.MapPost("/things", CreateThing).WithName("CreateThing").ProducesProblem(StatusCodes.Status409Conflict);
             app.MapGet("/things/{thingId:guid}", (Guid thingId) => TypedResults.Ok(thingId.ToString())).WithName("GetThing");
+            app.MapGet("/me", () => TypedResults.Ok("me")).WithName("GetMe").AllowUnregisteredUser();
+            app.MapGet("/public", () => TypedResults.Ok("ok")).WithName("GetPublic").AllowAnonymous();
         });
 
         using var client = _app.GetTestClient();
@@ -73,19 +76,43 @@ public sealed class OpenApiDocumentTests : IAsyncLifetime
 
     [Theory]
     [InlineData("400")]
+    [InlineData("401")]
+    [InlineData("403")]
     [InlineData("409")]
     [InlineData("500")]
     public void A_posts_problem_responses_use_the_problem_schema(string status) =>
         Assert.Equal("#/components/schemas/Problem", ProblemSchemaRef(Operation("/things", "post"), status));
 
     [Fact]
-    public void A_get_declares_the_500_but_not_the_idempotency_400()
+    public void A_get_declares_the_401_403_and_500_problems_but_not_the_idempotency_400()
     {
         var operation = Operation("/things/{thingId}", "get");
 
+        Assert.Equal("#/components/schemas/Problem", ProblemSchemaRef(operation, "401"));
+        Assert.Equal("#/components/schemas/Problem", ProblemSchemaRef(operation, "403"));
         Assert.Equal("#/components/schemas/Problem", ProblemSchemaRef(operation, "500"));
         Assert.False(operation.GetProperty("responses").TryGetProperty("400", out _));
         Assert.DoesNotContain(Parameters(operation), parameter => parameter.GetProperty("name").GetString() == "Idempotency-Key");
+    }
+
+    [Fact]
+    public void An_endpoint_for_unregistered_users_declares_401_and_500_without_403()
+    {
+        var responses = Operation("/me", "get").GetProperty("responses");
+
+        Assert.True(responses.TryGetProperty("401", out _));
+        Assert.False(responses.TryGetProperty("403", out _));
+        Assert.True(responses.TryGetProperty("500", out _));
+    }
+
+    [Fact]
+    public void An_anonymous_endpoint_declares_500_without_401_or_403()
+    {
+        var responses = Operation("/public", "get").GetProperty("responses");
+
+        Assert.False(responses.TryGetProperty("401", out _));
+        Assert.False(responses.TryGetProperty("403", out _));
+        Assert.True(responses.TryGetProperty("500", out _));
     }
 
     [Fact]

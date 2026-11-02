@@ -16,7 +16,7 @@ public sealed class CorsTests : IAsyncLifetime
         _app = await TestHost.StartAsync(
             app => app.MapGet("/things", () => Results.Created("/things/1", null)),
             settings: new Dictionary<string, string?> { ["Cors:AllowedOrigins:0"] = SpaOrigin });
-        _client = _app.GetTestClient();
+        _client = _app.CreateClient();
     }
 
     public async ValueTask DisposeAsync()
