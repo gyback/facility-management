@@ -86,6 +86,7 @@ jobs:
         with:
           context: .
           file: FacilityManagementService.API/Dockerfile
+          pull: true
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -121,11 +122,11 @@ jobs:
       - name: Check for changes in infra/
         id: changes
         run: |
-          if [ ! -d "infra" ] || [ -z "$(find infra -maxdepth 2 -name '*.tf' -print -quit)" ]; then
+          if [ ! -d "infra" ] || [ -z "$(find infra -maxdepth 1 -name '*.tf' -print -quit)" ]; then
             echo "has-infra=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          CHANGED=$(git diff --name-only "${{ github.event.pull_request.base.sha }}" "${{ github.sha }}" -- infra/)
+          CHANGED=$(git diff --name-only "${{ github.event.pull_request.base.sha }}...${{ github.sha }}" -- infra/ ':(exclude)infra/bootstrap/**')
           if [ -n "$CHANGED" ]; then
             echo "has-infra=true" >> "$GITHUB_OUTPUT"
           else
@@ -165,14 +166,18 @@ jobs:
         run: |
           terraform init -input=false
           terraform validate
-          terraform plan -input=false -no-color -out=tfplan | tee plan.txt
+          terraform plan -input=false -no-color -out=tfplan 2>&1 | tee plan.txt
 
       - name: Post Terraform plan to pull request
-        if: steps.changes.outputs.has-infra == 'true' && vars.AZURE_CLIENT_ID != ''
+        if: (success() || steps.plan.outcome == 'failure') && steps.changes.outputs.has-infra == 'true' && vars.AZURE_CLIENT_ID != ''
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');
+            if (!fs.existsSync('infra/plan.txt')) {
+              core.info('infra/plan.txt not found; skipping PR comment.');
+              return;
+            }
             const plan = fs.readFileSync('infra/plan.txt', 'utf8');
             const maxLen = 60000;
             const truncated = plan.length > maxLen
@@ -181,10 +186,11 @@ jobs:
             const marker = '<!-- terraform-plan-comment -->';
             const body = `${marker}\n### Terraform Plan\n\n\`\`\`terraform\n${truncated}\n\`\`\``;
 
-            const { data: comments } = await github.rest.issues.listComments({
+            const comments = await github.paginate(github.rest.issues.listComments, {
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: context.issue.number,
+              per_page: 100,
             });
             const existing = comments.find(c => c.body && c.body.includes(marker));
             if (existing) {
@@ -299,16 +305,25 @@ jobs:
               --name "${{ vars.AZURE_MIGRATION_JOB_NAME }}" \
               --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
               --job-execution-name "$EXECUTION_NAME" \
-              --query properties.status -o tsv)
+              --query properties.status -o tsv || true)
+            echo "Migration job execution $EXECUTION_NAME status: ${STATUS:-<empty>}"
             if [ "$STATUS" = "Succeeded" ]; then
               exit 0
-            elif [ "$STATUS" = "Failed" ]; then
-              echo "Migration job execution $EXECUTION_NAME failed." >&2
+            elif [ "$STATUS" = "Failed" ] || [ "$STATUS" = "Canceled" ]; then
+              echo "Migration job execution $EXECUTION_NAME ended with status '$STATUS'." >&2
+              az containerapp job execution show \
+                --name "${{ vars.AZURE_MIGRATION_JOB_NAME }}" \
+                --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+                --job-execution-name "$EXECUTION_NAME" -o json >&2 || true
               exit 1
             fi
             sleep 5
           done
           echo "Timed out waiting for migration job execution $EXECUTION_NAME." >&2
+          az containerapp job execution show \
+            --name "${{ vars.AZURE_MIGRATION_JOB_NAME }}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --job-execution-name "$EXECUTION_NAME" -o json >&2 || true
           exit 1
 
       - name: Deploy API image to Azure Container Apps
