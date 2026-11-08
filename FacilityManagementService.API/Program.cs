@@ -1,4 +1,6 @@
 using FacilityManagementService.API;
+using FacilityManagementService.API.Facilities;
+using FacilityManagementService.API.Users;
 using FacilityManagementService.Application;
 using FacilityManagementService.Infrastructure;
 
@@ -12,6 +14,8 @@ var app = builder.Build();
 
 app.UseApi();
 
-// Each feature maps its endpoints here, e.g. app.MapFacilityEndpoints(); see the README.
+app.MapUserEndpoints();
+app.MapFacilityEndpoints();
 
 app.Run();
+

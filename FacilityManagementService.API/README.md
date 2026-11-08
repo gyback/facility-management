@@ -284,8 +284,23 @@ member of, or the route does not match, e.g. an id that is not a GUID.
 
 #### conflict
 
-`409`. A unique index rejected the change, typically because a concurrent
-request made a conflicting change first. Reload and try again.
+`409`. A unique index or concurrency token rejected the change, typically
+because a concurrent request made a conflicting change first. Reload and try
+again.
+
+#### already-facility-member
+
+`409`. The caller is already a member of the facility.
+
+#### invitation-expired
+
+`409`. The facility invitation has expired. Ask a facility administrator for a
+new invitation.
+
+#### last-facility-administrator
+
+`409`. The facility must keep at least one administrator; the last
+administrator cannot be removed or given another role.
 
 #### internal-error
 

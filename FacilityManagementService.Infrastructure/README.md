@@ -11,7 +11,7 @@ registers everything below.
 | Type | Role |
 |---|---|
 | `AppDbContext` | The EF Core model. Applies every `IEntityTypeConfiguration<T>` in this assembly and the strongly typed id conventions. Internal, so nothing outside Infrastructure can reach it. |
-| `UnitOfWork` : `IUnitOfWork` | Runs each command in one transaction under the SQL Server retrying execution strategy, and is the only caller of `SaveChanges`. On a transient failure it clears the change tracker and re-runs the whole command. A unique index rejecting the changes (SQL Server error 2627 or 2601) is not retried; it becomes a `ConflictException` (see below). Units of work do not nest: running a command from inside another throws. |
+| `UnitOfWork` : `IUnitOfWork` | Runs each command in one transaction under the SQL Server retrying execution strategy, and is the only caller of `SaveChanges`. On a transient failure it clears the change tracker and re-runs the whole command. A unique index rejecting the changes (SQL Server error 2627 or 2601) or an optimistic concurrency conflict (`DbUpdateConcurrencyException`) is not retried; it becomes a `ConflictException` (see below). Units of work do not nest: running a command from inside another throws. |
 | `ReadDbContext` : `IReadDbContext` | Untracked `IQueryable<T>` per aggregate root for query handlers. |
 | Repositories | One per aggregate root, added with its feature. They stage changes in the scoped `AppDbContext` and never save. |
 
@@ -61,8 +61,8 @@ Per [ADR-0015](../docs/adr/0015-authenticate-with-entra-external-id-and-invitati
 - Both `CurrentUser` and `ICurrentUser` resolve to that same scoped instance:
   the fallback authorisation policy checks `CurrentUser.IsRegistered`, and
   handlers inject `ICurrentUser`.
-- `UserIdentityLookup` returns `null` until the `User` aggregate and its
-  external-identities table are added ([#45](https://github.com/gyback/facility-management/issues/45)).
+- `UserIdentityLookup` queries `UserExternalIdentities` untracked to resolve
+  the linked `UserId`.
 
 ## Configuration
 

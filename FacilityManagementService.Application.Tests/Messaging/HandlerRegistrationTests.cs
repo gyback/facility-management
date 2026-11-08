@@ -1,6 +1,8 @@
+using FacilityManagementService.Application.Facilities;
 using FacilityManagementService.Application.Messaging;
 using FacilityManagementService.Application.Messaging.Decorators;
 using FacilityManagementService.Application.Persistence;
+using FacilityManagementService.Application.Users;
 using FacilityManagementService.Application.Validation;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -41,6 +43,12 @@ public sealed class HandlerRegistrationTests
         var services = new ServiceCollection()
             .AddLogging()
             .AddScoped<IUnitOfWork, RecordingUnitOfWork>()
+            .AddScoped<IReadDbContext, EmptyReadDbContext>()
+            .AddScoped<ICurrentUser, FakeCurrentUser>()
+            .AddScoped<IUserRepository, FakeUserRepository>()
+            .AddScoped<IFacilityRepository, FakeFacilityRepository>()
+            .AddScoped<IFacilityInvitationRepository, FakeFacilityInvitationRepository>()
+            .AddSingleton(TimeProvider.System)
             .AddSingleton<Journal>()
             .AddApplication();
 

@@ -14,9 +14,14 @@ namespace FacilityManagementService.Infrastructure.Persistence;
 /// </remarks>
 internal static class UniqueIndexRules
 {
+    public const string FacilityMembersPrimaryKey = "PK_FacilityMembers";
+
     /// <summary>Index name to <see cref="RuleCodes"/> constant.</summary>
     internal static readonly IReadOnlyDictionary<string, string> RuleCodeByIndexName =
-        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            [FacilityMembersPrimaryKey] = RuleCodes.AlreadyFacilityMember,
+        };
 
     /// <returns>The code of the rule <paramref name="indexName"/> enforces, or <see langword="null"/>.</returns>
     public static string? FindRuleCode(string indexName) =>

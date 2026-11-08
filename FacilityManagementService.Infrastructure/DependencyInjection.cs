@@ -1,7 +1,10 @@
+using FacilityManagementService.Application.Facilities;
 using FacilityManagementService.Application.Persistence;
 using FacilityManagementService.Application.Users;
+using FacilityManagementService.Infrastructure.Facilities;
 using FacilityManagementService.Infrastructure.Identity;
 using FacilityManagementService.Infrastructure.Persistence;
+using FacilityManagementService.Infrastructure.Users;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -13,8 +16,8 @@ public static class DependencyInjection
 {
     /// <summary>
     /// Registers the database, <see cref="IUnitOfWork"/>, <see cref="IReadDbContext"/>,
-    /// <see cref="ICurrentUser"/>, <see cref="IUserIdentityLookup"/> and
-    /// <see cref="TimeProvider.System"/> as the application clock.
+    /// the aggregate repositories, <see cref="ICurrentUser"/>, <see cref="IUserIdentityLookup"/>
+    /// and <see cref="TimeProvider.System"/> as the application clock.
     /// </summary>
     /// <remarks>
     /// The connection is configured from the <c>Database</c> section, which is validated when the
@@ -37,6 +40,9 @@ public static class DependencyInjection
         // work see the same tracked changes.
         services.TryAddScoped<IUnitOfWork, UnitOfWork>();
         services.TryAddScoped<IReadDbContext, ReadDbContext>();
+        services.TryAddScoped<IUserRepository, UserRepository>();
+        services.TryAddScoped<IFacilityRepository, FacilityRepository>();
+        services.TryAddScoped<IFacilityInvitationRepository, FacilityInvitationRepository>();
 
         // Both resolve to the same scoped instance: the API populates CurrentUser and handlers
         // read ICurrentUser.

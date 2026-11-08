@@ -1,4 +1,6 @@
 using FacilityManagementService.Application.Persistence;
+using FacilityManagementService.Domain.Facilities;
+using FacilityManagementService.Domain.Users;
 using Microsoft.EntityFrameworkCore;
 
 namespace FacilityManagementService.Infrastructure.Persistence;
@@ -8,8 +10,11 @@ namespace FacilityManagementService.Infrastructure.Persistence;
 /// </summary>
 internal sealed class ReadDbContext(AppDbContext context) : IReadDbContext
 {
-    // Expose each aggregate root through Query, e.g. public IQueryable<Stay> Stays => Query<Stay>();
+    public IQueryable<Facility> Facilities => Query<Facility>();
 
-    // ReSharper disable once UnusedMember.Local
+    public IQueryable<FacilityInvitation> FacilityInvitations => Query<FacilityInvitation>();
+
+    public IQueryable<User> Users => Query<User>();
+
     private IQueryable<T> Query<T>() where T : class => context.Set<T>().AsNoTracking();
 }

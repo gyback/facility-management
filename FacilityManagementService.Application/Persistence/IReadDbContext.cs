@@ -1,3 +1,6 @@
+using FacilityManagementService.Domain.Facilities;
+using FacilityManagementService.Domain.Users;
+
 namespace FacilityManagementService.Application.Persistence;
 
 /// <summary>
@@ -9,4 +12,11 @@ namespace FacilityManagementService.Application.Persistence;
 /// introduces the aggregate, e.g. <c>IQueryable&lt;Stay&gt; Stays { get; }</c>. The queries are
 /// not tracked and nothing here can write; command handlers use their aggregate's repository.
 /// </remarks>
-public interface IReadDbContext;
+public interface IReadDbContext
+{
+    IQueryable<Facility> Facilities { get; }
+
+    IQueryable<FacilityInvitation> FacilityInvitations { get; }
+
+    IQueryable<User> Users { get; }
+}
