@@ -6,9 +6,9 @@
 
     <ItemGroup>
         <!-- Read side only: async LINQ for query handlers over IReadDbContext (ADR-0014). -->
-        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.12" />
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.12" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.14" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.14" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.14" />
     </ItemGroup>
 
     <ItemGroup>
