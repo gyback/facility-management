@@ -6,7 +6,9 @@ Accept: application/json
 
 ###
 
-# Every POST needs an Idempotency-Key header (ADR-0017), e.g.:
+# Every endpoint except /openapi/v1.json and the health probes needs a bearer
+# token (ADR-0015), and every POST needs an Idempotency-Key header (ADR-0017), e.g.:
 # POST {{FacilityManagementService.API_HostAddress}}/facilities
+# Authorization: Bearer {{token}}
 # Content-Type: application/json
 # Idempotency-Key: {{$random.uuid}}

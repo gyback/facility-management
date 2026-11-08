@@ -1,5 +1,6 @@
 using FacilityManagementService.Application.Messaging;
 using FacilityManagementService.Application.Persistence;
+using FacilityManagementService.Application.Users;
 using FacilityManagementService.Application.Validation;
 using FacilityManagementService.Domain.Rules;
 
@@ -25,6 +26,9 @@ internal sealed class CreateThingHandler(Journal journal) : ICommandHandler<Crea
         return command.Name switch
         {
             "explode" => throw new InvalidOperationException("Boom."),
+            "unregistered" => throw new UnregisteredUserException(),
+            "forbidden" => throw new ForbiddenException(),
+            "not-found" => throw new NotFoundException(),
             "refuse" => throw new ThingRuleException(),
             "conflict" => throw new ConflictException(null, "IX_Things_Name", new InvalidOperationException("Duplicate.")),
             _ => Task.FromResult(Guid.NewGuid()),

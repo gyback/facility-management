@@ -129,6 +129,12 @@ catalogue.
 Failures are thrown, never returned:
 
 - `ValidationException` from the validation decorator;
+- `NotFoundException` (`Messaging/`) when the target does not exist or belongs
+  to a facility the caller is not a member of;
+- `ForbiddenException` (Domain) when the caller's role, ownership or
+  capabilities do not allow the action;
+- `UnregisteredUserException` (`Users/`) when `ICurrentUser.Id` is read for a
+  signed-in identity that is not linked to a user;
 - a `DomainRuleException` subclass (Domain) when a rule refuses the change
   given the current state, carrying a code from `RuleCodes`;
 - `ConflictException` from `IUnitOfWork` when a unique index rejects the
@@ -136,6 +142,25 @@ Failures are thrown, never returned:
 
 The API maps each to a problem response; see the
 [API README](../FacilityManagementService.API/README.md).
+
+## Current user and authorisation
+
+Per [ADR-0015](../docs/adr/0015-authenticate-with-entra-external-id-and-invitation-linked-users.md),
+handlers inject `ICurrentUser` (`Users/`) to learn who is making the request:
+
+- `currentUser.Id` is the caller's `UserId`, resolved once per request before
+  the endpoint runs. It throws `UnregisteredUserException` if the signed-in
+  identity is not linked to a user.
+- `currentUser.Identity` is the provider's `ExternalIdentity(Provider, Subject,
+  DisplayName)`, used only when linking an identity to a user.
+- Handlers pass `UserId` into domain methods as an argument (e.g.
+  `stay.Reschedule(by: currentUser.Id, ...)`). Domain code never sees
+  `ICurrentUser`.
+- Command handlers that touch facility data check first that the caller is a
+  member of the facility, throwing `NotFoundException` if not, and only then
+  call the domain rule check, which throws `ForbiddenException` when the
+  caller's role or ownership does not allow the change. Query handlers scope
+  their projections to facilities where the caller is a member.
 
 ## Data access
 

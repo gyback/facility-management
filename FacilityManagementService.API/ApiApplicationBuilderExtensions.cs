@@ -1,3 +1,4 @@
+using FacilityManagementService.API.Http.Authentication;
 using FacilityManagementService.API.Http.Idempotency;
 
 namespace FacilityManagementService.API;
@@ -5,8 +6,8 @@ namespace FacilityManagementService.API;
 internal static class ApiApplicationBuilderExtensions
 {
     /// <summary>
-    /// Adds the request pipeline of ADR-0017 and maps the OpenAPI document. Feature endpoints
-    /// are mapped after this.
+    /// Adds the request pipeline of ADR-0015 and ADR-0017 and maps the OpenAPI document. Feature
+    /// endpoints are mapped after this.
     /// </summary>
     public static WebApplication UseApi(this WebApplication app)
     {
@@ -18,9 +19,11 @@ internal static class ApiApplicationBuilderExtensions
         app.UseHttpsRedirection();
         app.UseRouting();
         app.UseCors();
+        app.UseAuthentication();
+        app.UseMiddleware<CurrentUserMiddleware>();
         app.UseAuthorization();
 
-        // After routing, so it knows whether the request matched a POST endpoint.
+        // After authorisation, so unauthenticated or unregistered callers are rejected first.
         app.UseMiddleware<IdempotencyKeyMiddleware>();
 
         // In every environment and anonymously (ADR-0015): the client generator reads it.
