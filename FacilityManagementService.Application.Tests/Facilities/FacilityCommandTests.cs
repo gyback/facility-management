@@ -231,6 +231,23 @@ public sealed class FacilityCommandTests
     }
 
     [Fact]
+    public void SetFacilityMemberRoleValidator_checks_role()
+    {
+        var validator = new SetFacilityMemberRoleValidator();
+
+        ValidationAssertions.Equal(
+            [
+                ValidationError.OutOfRange(
+                    nameof(SetFacilityMemberRole.Role),
+                    nameof(FacilityRole.Member),
+                    nameof(FacilityRole.Administrator)),
+            ],
+            validator.Validate(new SetFacilityMemberRole(FacilityId.New(), UserId.New(), (FacilityRole)99)));
+
+        Assert.Empty(validator.Validate(new SetFacilityMemberRole(FacilityId.New(), UserId.New(), FacilityRole.Owner)));
+    }
+
+    [Fact]
     public async Task RemoveFacilityMember_removes_a_member()
     {
         var (admin, facility) = CreateSeededFacility();

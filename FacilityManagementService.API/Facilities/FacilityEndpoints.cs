@@ -50,6 +50,7 @@ internal static class FacilityEndpoints
 
         facility.MapPut("/members/{userId:guid}", SetFacilityMemberRole)
             .WithName(nameof(Application.Facilities.SetFacilityMemberRole))
+            .ProducesProblem(StatusCodes.Status400BadRequest)
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);
 

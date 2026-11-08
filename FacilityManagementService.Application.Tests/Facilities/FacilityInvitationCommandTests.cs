@@ -65,6 +65,23 @@ public sealed class FacilityInvitationCommandTests
     }
 
     [Fact]
+    public void CreateFacilityInvitationValidator_checks_role()
+    {
+        var validator = new CreateFacilityInvitationValidator();
+
+        ValidationAssertions.Equal(
+            [
+                ValidationError.OutOfRange(
+                    nameof(CreateFacilityInvitation.Role),
+                    nameof(FacilityRole.Member),
+                    nameof(FacilityRole.Administrator)),
+            ],
+            validator.Validate(new CreateFacilityInvitation(FacilityId.New(), (FacilityRole)99)));
+
+        Assert.Empty(validator.Validate(new CreateFacilityInvitation(FacilityId.New(), FacilityRole.Owner)));
+    }
+
+    [Fact]
     public async Task RevokeFacilityInvitation_removes_a_pending_invitation()
     {
         var (admin, facility) = CreateSeededFacility();

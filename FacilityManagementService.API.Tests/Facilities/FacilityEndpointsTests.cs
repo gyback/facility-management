@@ -285,6 +285,18 @@ public sealed class FacilityEndpointsTests : IAsyncLifetime
         Assert.Equal("[]", body.GetProperty("warnings").GetRawText());
     }
 
+    [Fact]
+    public async Task Integer_enum_value_in_request_body_is_rejected_as_malformed_request()
+    {
+        using var request = Post($"/facilities/{SampleFacilityId.Value}/invitations", new { role = 99 });
+
+        await Http.Problems.ProblemResponseTests.SendForProblemAsync(
+            _client,
+            request,
+            HttpStatusCode.BadRequest,
+            "malformed-request");
+    }
+
     private static HttpRequestMessage Post(string path, object body) => new(HttpMethod.Post, path)
     {
         Content = JsonContent.Create(body),
