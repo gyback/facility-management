@@ -1,11 +1,15 @@
+using System.Data.Common;
 using FacilityManagementService.Application.Persistence;
+using FacilityManagementService.Domain.Facilities;
 using FacilityManagementService.Infrastructure;
 using FacilityManagementService.Infrastructure.Persistence;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace FacilityManagementService.IntegrationTests.Persistence;
 
@@ -20,6 +24,9 @@ public sealed class UnitOfWorkTests(SqlServerFixture sqlServer) : IAsyncLifetime
     // transient, standing in for errors such as a deadlock (1205).
     private const int SimulatedTransientError = 50001;
     private const int SimulatedPermanentError = 50002;
+
+    private readonly CommitFailureInterceptor _commitInterceptor = new();
+    private readonly AdjustableTimeProvider _clock = new(new DateTimeOffset(2026, 11, 10, 12, 0, 0, TimeSpan.Zero));
 
     private TestDatabase<AppDbContext> _database = null!;
     private ServiceProvider _services = null!;
@@ -37,7 +44,7 @@ public sealed class UnitOfWorkTests(SqlServerFixture sqlServer) : IAsyncLifetime
                 "CREATE UNIQUE INDEX IX_Notes_Text ON Notes (Text);",
                 cancellationToken);
 
-            _services = AddInfrastructure(context.Database.GetConnectionString()!);
+            _services = AddInfrastructure(context.Database.GetConnectionString()!, _commitInterceptor, _clock);
         }
         catch
         {
@@ -112,6 +119,158 @@ public sealed class UnitOfWorkTests(SqlServerFixture sqlServer) : IAsyncLifetime
         // note was cleared from the change tracker rather than saved by the second attempt.
         Assert.Equal(2, result);
         Assert.Equal(["sql 2", "tracked 2"], await ReadNotesAsync());
+    }
+
+    [Fact]
+    public async Task A_lost_commit_acknowledgement_verifies_the_marker_and_returns_the_result_without_rerunning_the_operation()
+    {
+        _commitInterceptor.ThrowAfterNextCommit = true;
+        var attempts = 0;
+        var expectedId = FacilityId.New();
+
+        var result = await ExecuteAsync((context, _) =>
+        {
+            attempts++;
+            context.Add(new Note { Id = Guid.NewGuid(), Text = "Sauna" });
+            return Task.FromResult(expectedId);
+        });
+
+        Assert.Equal(1, attempts);
+        Assert.Equal(expectedId, result);
+        Assert.Equal(["Sauna"], await ReadNotesAsync());
+    }
+
+    [Fact]
+    public async Task A_lost_commit_acknowledgement_with_an_idempotency_key_verifies_the_marker_and_returns_the_result()
+    {
+        _commitInterceptor.ThrowAfterNextCommit = true;
+        var attempts = 0;
+        var expectedId = FacilityId.New();
+
+        await using var scope = _services.CreateAsyncScope();
+        var idempotency = scope.ServiceProvider.GetRequiredService<IdempotencyContext>();
+        var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+        idempotency.SetRequest("user:1", "idem-lost-ack", "fp-1");
+
+        var result = await unitOfWork.ExecuteAsync(
+            _ =>
+            {
+                attempts++;
+                context.Add(new Note { Id = Guid.NewGuid(), Text = "Sauna" });
+                return Task.FromResult(expectedId);
+            },
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, attempts);
+        Assert.Equal(expectedId, result);
+        Assert.Equal(["Sauna"], await ReadNotesAsync());
+    }
+
+    [Fact]
+    public async Task An_idempotency_key_marker_is_stored_on_commit_and_replayed_without_rerunning_the_operation()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var expectedId = FacilityId.New();
+        var attempts = 0;
+
+        await using (var firstScope = _services.CreateAsyncScope())
+        {
+            var idempotency = firstScope.ServiceProvider.GetRequiredService<IdempotencyContext>();
+            var context = firstScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var unitOfWork = firstScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+            idempotency.SetRequest("user:42", "key-replay", "fingerprint-abc");
+
+            var firstResult = await unitOfWork.ExecuteAsync(
+                _ =>
+                {
+                    attempts++;
+                    context.Add(new Note { Id = Guid.NewGuid(), Text = "Sauna" });
+                    return Task.FromResult(expectedId);
+                },
+                ct);
+
+            Assert.Equal(expectedId, firstResult);
+        }
+
+        await using (var secondScope = _services.CreateAsyncScope())
+        {
+            var lookup = secondScope.ServiceProvider.GetRequiredService<IIdempotencyKeyLookup>();
+            var idempotency = secondScope.ServiceProvider.GetRequiredService<IdempotencyContext>();
+            var unitOfWork = secondScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+            var stored = await lookup.FindAsync("user:42", "key-replay", ct);
+            Assert.NotNull(stored);
+            Assert.Equal("fingerprint-abc", stored.Fingerprint);
+
+            idempotency.SetReplay("user:42", "key-replay", stored.Fingerprint, stored.ResultJson);
+
+            var replayedResult = await unitOfWork.ExecuteAsync(
+                _ =>
+                {
+                    attempts++;
+                    return Task.FromResult(FacilityId.New());
+                },
+                ct);
+
+            Assert.Equal(expectedId, replayedResult);
+            Assert.Equal(1, attempts);
+        }
+    }
+
+    [Fact]
+    public async Task Expired_markers_are_deleted_when_a_command_runs_so_expired_keys_can_be_reused()
+    {
+        var ct = TestContext.Current.CancellationToken;
+
+        await using (var firstScope = _services.CreateAsyncScope())
+        {
+            var idempotency = firstScope.ServiceProvider.GetRequiredService<IdempotencyContext>();
+            var context = firstScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var unitOfWork = firstScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+            idempotency.SetRequest("user:42", "expiring-key", "fingerprint-1");
+
+            await unitOfWork.ExecuteAsync(
+                _ =>
+                {
+                    context.Add(new Note { Id = Guid.NewGuid(), Text = "First" });
+                    return Task.FromResult(1);
+                },
+                ct);
+        }
+
+        // Advance past the 24-hour idempotency key lifetime.
+        _clock.Advance(TimeSpan.FromHours(24).Add(TimeSpan.FromSeconds(1)));
+
+        await using (var secondScope = _services.CreateAsyncScope())
+        {
+            var lookup = secondScope.ServiceProvider.GetRequiredService<IIdempotencyKeyLookup>();
+            var idempotency = secondScope.ServiceProvider.GetRequiredService<IdempotencyContext>();
+            var context = secondScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var unitOfWork = secondScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+            Assert.Null(await lookup.FindAsync("user:42", "expiring-key", ct));
+
+            // Reusing the same (Scope, Key) with a new fingerprint succeeds because UnitOfWork
+            // deletes expired markers before saving the new one.
+            idempotency.SetRequest("user:42", "expiring-key", "fingerprint-2");
+
+            var secondResult = await unitOfWork.ExecuteAsync(
+                _ =>
+                {
+                    context.Add(new Note { Id = Guid.NewGuid(), Text = "Second" });
+                    return Task.FromResult(2);
+                },
+                ct);
+
+            Assert.Equal(2, secondResult);
+
+            var remainingMarkers = await context.Set<CommandMarker>().CountAsync(ct);
+            Assert.Equal(1, remainingMarkers);
+        }
     }
 
     [Fact]
@@ -235,7 +394,10 @@ public sealed class UnitOfWorkTests(SqlServerFixture sqlServer) : IAsyncLifetime
     /// container's connection string. Adds <see cref="Note"/> to the model and treats
     /// <see cref="SimulatedTransientError"/> as transient, without delays between retries.
     /// </summary>
-    private static ServiceProvider AddInfrastructure(string connectionString)
+    private static ServiceProvider AddInfrastructure(
+        string connectionString,
+        CommitFailureInterceptor commitInterceptor,
+        TimeProvider timeProvider)
     {
         var connection = new SqlConnectionStringBuilder(connectionString);
         var user = connection.UserID;
@@ -256,13 +418,52 @@ public sealed class UnitOfWorkTests(SqlServerFixture sqlServer) : IAsyncLifetime
         return new ServiceCollection()
             .AddSingleton<IConfiguration>(configuration)
             .AddInfrastructure()
+            .Replace(ServiceDescriptor.Singleton(timeProvider))
             .ConfigureDbContext<AppDbContext>(options => options
                 .ReplaceService<IModelCustomizer, NoteModelCustomizer>()
+                .AddInterceptors(commitInterceptor)
                 .UseSqlServer(sqlServer => sqlServer.EnableRetryOnFailure(
                     maxRetryCount: 3,
                     maxRetryDelay: TimeSpan.Zero,
                     errorNumbersToAdd: [SimulatedTransientError])))
             .BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
+    }
+
+    /// <summary>
+    /// Simulates a lost commit acknowledgement by raising <see cref="SimulatedTransientError"/>
+    /// immediately after the database transaction has committed.
+    /// </summary>
+    private sealed class CommitFailureInterceptor : DbTransactionInterceptor
+    {
+        public bool ThrowAfterNextCommit { get; set; }
+
+        public override async Task TransactionCommittedAsync(
+            DbTransaction transaction,
+            TransactionEndEventData eventData,
+            CancellationToken cancellationToken = default)
+        {
+            await base.TransactionCommittedAsync(transaction, eventData, cancellationToken);
+
+            if (!ThrowAfterNextCommit || eventData.Context is null)
+            {
+                return;
+            }
+
+            ThrowAfterNextCommit = false;
+
+            await using var command = eventData.Context.Database.GetDbConnection().CreateCommand();
+            command.CommandText = $"THROW {SimulatedTransientError}, 'Simulated lost commit acknowledgement.', 1;";
+            await command.ExecuteNonQueryAsync(cancellationToken);
+        }
+    }
+
+    private sealed class AdjustableTimeProvider(DateTimeOffset initialNow) : TimeProvider
+    {
+        private DateTimeOffset _now = initialNow;
+
+        public override DateTimeOffset GetUtcNow() => _now;
+
+        public void Advance(TimeSpan delta) => _now = _now.Add(delta);
     }
 }
 

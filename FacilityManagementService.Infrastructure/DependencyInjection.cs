@@ -38,6 +38,8 @@ public static class DependencyInjection
 
         // Scoped like the AppDbContext they share, so a command's repositories and its unit of
         // work see the same tracked changes.
+        services.TryAddScoped<IdempotencyContext>();
+        services.TryAddScoped<IIdempotencyKeyLookup, IdempotencyKeyLookup>();
         services.TryAddScoped<IUnitOfWork, UnitOfWork>();
         services.TryAddScoped<IReadDbContext, ReadDbContext>();
         services.TryAddScoped<IUserRepository, UserRepository>();
