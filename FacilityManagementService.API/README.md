@@ -51,7 +51,7 @@ internal static class StayEndpoints
   learns every success response from the signature.
 - It declares the problems it can return with `.ProducesProblem(status)`.
   Every non-anonymous operation also gets `401` and `403`, every operation a
-  `500`, and every `POST` a `400`, without declaring them.
+  `500`, and every `POST` a `400`, `409` and `422`, without declaring them.
 - Its operation id (`WithName`) is the name of the command or query it
   calls, so the generated client uses the Application's vocabulary. A
   feature's routes share a `MapGroup` and an OpenAPI tag.
@@ -200,16 +200,29 @@ when the identity is not linked):
 
 ## Idempotency keys
 
-Every `POST` needs an `Idempotency-Key` header: 1 to 64 visible ASCII
+Per [ADR-0017](../docs/adr/0017-use-minimal-apis-with-problem-details-warnings-and-idempotency-keys.md)
+and [ADR-0019](../docs/adr/0019-make-commands-idempotent-with-commit-markers.md),
+every `POST` needs an `Idempotency-Key` header: 1 to 64 visible ASCII
 characters. The SPA sends a new UUID per user action, and reuses it for
 every retry of that action. Without one, or with a malformed one, the
 request is rejected before the endpoint runs. `PUT`, `DELETE` and `GET`
 ignore the header. Testing a `POST` by hand therefore needs the header, e.g.
 `Idempotency-Key: {{$random.uuid}}` in the `.http` file.
 
-Storing keys and replaying the original response to a retry is
-[#50](https://github.com/gyback/facility-management/issues/50). Until then the
-key is required but not yet honoured.
+- A key is scoped to the caller (`user:{UserId}`, or
+  `identity:{Provider}:{Subject}` on endpoints that allow unregistered
+  callers) and fingerprinted with a SHA-256 hash of the method, path, query
+  string and raw request body.
+- When a `POST` command commits, `UnitOfWork` writes a `CommandMarker` row in
+  the same transaction with a 24-hour expiry and the serialised command
+  result. Failed commands leave no marker, so retrying after an error runs the
+  command again.
+- A retry with the same key and fingerprint replays the committed command
+  result through the endpoint (same status code, `Location` header and
+  `warnings`) without running the handler again.
+- Reusing a committed key with a different request answers `422
+  idempotency-key-reused`. A concurrent duplicate while the first request is
+  still running answers `409 idempotency-key-in-use` with `Retry-After: 1`.
 
 ## CORS
 
@@ -258,6 +271,16 @@ property's errors by its camelCase name; see [Validation codes](#validation-code
 
 `400`. The `Idempotency-Key` header is not a single value of 1 to 64 visible
 ASCII characters.
+
+#### idempotency-key-in-use
+
+`409`, with `Retry-After`. Another request with the same `Idempotency-Key` is
+still in progress. Retry with the same key after the delay.
+
+#### idempotency-key-reused
+
+`422`. The `Idempotency-Key` was already used for a committed command with a
+different method, path or request body. Send a new key for a new request.
 
 #### unauthenticated
 

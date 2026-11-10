@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 using FacilityManagementService.API.Tests.Http.Authentication;
+using FacilityManagementService.Application.Persistence;
 using FacilityManagementService.Application.Users;
 using FacilityManagementService.Domain.Users;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -34,6 +35,7 @@ internal static class TestHost
         string environment = "Production",
         IReadOnlyDictionary<string, string?>? settings = null,
         IUserIdentityLookup? identityLookup = null,
+        IIdempotencyKeyLookup? idempotencyLookup = null,
         Action<IServiceCollection>? configureServices = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environment });
@@ -43,6 +45,7 @@ internal static class TestHost
         builder.Logging.ClearProviders().AddFakeLogging();
         builder.Services.AddApi();
         builder.Services.AddScoped<IUserIdentityLookup>(_ => identityLookup ?? new DefaultTestUserIdentityLookup());
+        builder.Services.AddScoped<IIdempotencyKeyLookup>(_ => idempotencyLookup ?? new DefaultTestIdempotencyKeyLookup());
         configureServices?.Invoke(builder.Services);
         builder.Services.PostConfigure<JwtBearerOptions>(
             JwtBearerDefaults.AuthenticationScheme,
@@ -77,5 +80,14 @@ internal static class TestHost
             CancellationToken cancellationToken = default) =>
             Task.FromResult<UserId?>(
                 subject == TestTokens.RegisteredSubject ? TestTokens.RegisteredUserId : null);
+    }
+
+    private sealed class DefaultTestIdempotencyKeyLookup : IIdempotencyKeyLookup
+    {
+        public Task<StoredIdempotencyKey?> FindAsync(
+            string scope,
+            string key,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<StoredIdempotencyKey?>(null);
     }
 }

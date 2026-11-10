@@ -21,6 +21,8 @@ internal static class ProblemCatalogue
         [ProblemCodes.ValidationFailed] = "The request failed validation.",
         [ProblemCodes.IdempotencyKeyMissing] = "The Idempotency-Key header is missing.",
         [ProblemCodes.IdempotencyKeyInvalid] = "The Idempotency-Key header is invalid.",
+        [ProblemCodes.IdempotencyKeyInUse] = "A request with this Idempotency-Key is already in progress.",
+        [ProblemCodes.IdempotencyKeyReused] = "The Idempotency-Key was already used for a different request.",
         [ProblemCodes.Unauthenticated] = "Authentication is required.",
         [ProblemCodes.UserNotRegistered] = "The signed-in identity is not registered.",
         [ProblemCodes.Forbidden] = "The caller is not allowed to do this.",
@@ -43,6 +45,8 @@ internal static class ProblemCatalogue
         StatusCodes.Status403Forbidden => ProblemCodes.Forbidden,
         StatusCodes.Status404NotFound => ProblemCodes.NotFound,
         StatusCodes.Status405MethodNotAllowed => ProblemCodes.MethodNotAllowed,
+        StatusCodes.Status409Conflict => ProblemCodes.Conflict,
+        StatusCodes.Status422UnprocessableEntity => ProblemCodes.IdempotencyKeyReused,
         >= 500 => ProblemCodes.InternalError,
         _ => ProblemCodes.MalformedRequest,
     };

@@ -79,6 +79,7 @@ public sealed class OpenApiDocumentTests : IAsyncLifetime
     [InlineData("401")]
     [InlineData("403")]
     [InlineData("409")]
+    [InlineData("422")]
     [InlineData("500")]
     public void A_posts_problem_responses_use_the_problem_schema(string status) =>
         Assert.Equal("#/components/schemas/Problem", ProblemSchemaRef(Operation("/things", "post"), status));

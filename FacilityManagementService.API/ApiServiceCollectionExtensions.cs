@@ -5,6 +5,7 @@ using FacilityManagementService.API.Http.Cors;
 using FacilityManagementService.API.Http.Idempotency;
 using FacilityManagementService.API.Http.OpenApi;
 using FacilityManagementService.API.Http.Problems;
+using FacilityManagementService.Application.Persistence;
 using FacilityManagementService.Application.Users;
 using FacilityManagementService.Infrastructure.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -41,6 +42,9 @@ internal static class ApiServiceCollectionExtensions
 
         services.AddProblemDetails(options => options.CustomizeProblemDetails = ProblemCatalogue.Apply);
         services.AddExceptionHandler<ApiExceptionHandler>();
+
+        services.TryAddSingleton<InFlightIdempotencyKeys>();
+        services.TryAddScoped<IdempotencyContext>();
 
         services.AddCorsFromSettings();
         services.AddAuthenticationFromSettings();

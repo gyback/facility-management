@@ -79,6 +79,7 @@ sitting.
 | [0016](0016-keep-the-history-of-edited-and-deleted-comments.md) | Keep the history of edited and deleted comments | Accepted | 2026-10-15 |
 | [0017](0017-use-minimal-apis-with-problem-details-warnings-and-idempotency-keys.md) | Use minimal APIs with problem details, warnings and idempotency keys | Accepted | 2026-10-16 |
 | [0018](0018-use-domain-generated-version-7-guids-as-strongly-typed-ids.md) | Use domain-generated version 7 GUIDs as strongly typed IDs | Accepted | 2026-10-20 |
+| [0019](0019-make-commands-idempotent-with-commit-markers.md) | Make commands idempotent with commit markers | Accepted | 2026-11-10 |
 
 ## Follow-ups
 

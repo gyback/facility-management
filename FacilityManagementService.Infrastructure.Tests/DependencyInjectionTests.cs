@@ -31,6 +31,8 @@ public sealed class DependencyInjectionTests
         using var scope = provider.CreateScope();
 
         Assert.IsType<UnitOfWork>(scope.ServiceProvider.GetRequiredService<IUnitOfWork>());
+        Assert.IsType<IdempotencyContext>(scope.ServiceProvider.GetRequiredService<IdempotencyContext>());
+        Assert.IsType<IdempotencyKeyLookup>(scope.ServiceProvider.GetRequiredService<IIdempotencyKeyLookup>());
         Assert.IsType<ReadDbContext>(scope.ServiceProvider.GetRequiredService<IReadDbContext>());
         Assert.IsType<UserRepository>(scope.ServiceProvider.GetRequiredService<IUserRepository>());
         Assert.IsType<FacilityRepository>(scope.ServiceProvider.GetRequiredService<IFacilityRepository>());

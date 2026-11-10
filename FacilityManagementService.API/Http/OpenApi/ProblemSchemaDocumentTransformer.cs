@@ -84,6 +84,8 @@ internal sealed class ProblemSchemaDocumentTransformer
             if (method == HttpMethod.Post)
             {
                 operation.Responses.TryAdd("400", ProblemResponse("Bad Request"));
+                operation.Responses.TryAdd("409", ProblemResponse("Conflict"));
+                operation.Responses.TryAdd("422", ProblemResponse("Unprocessable Content"));
             }
 
             operation.Responses.TryAdd("500", ProblemResponse("Internal Server Error"));

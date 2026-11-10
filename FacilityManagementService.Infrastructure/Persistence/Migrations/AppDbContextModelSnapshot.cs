@@ -147,6 +147,38 @@ namespace FacilityManagementService.Infrastructure.Persistence.Migrations
                     b.ToTable("UserExternalIdentities", (string)null);
                 });
 
+            modelBuilder.Entity("FacilityManagementService.Infrastructure.Persistence.CommandMarker", b =>
+                {
+                    b.Property<string>("Scope")
+                        .HasMaxLength(360)
+                        .HasColumnType("nvarchar(360)");
+
+                    b.Property<string>("Key")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Fingerprint")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("ResultJson")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Scope", "Key")
+                        .HasName("PK_CommandMarkers");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("IX_CommandMarkers_ExpiresAt");
+
+                    b.ToTable("CommandMarkers", (string)null);
+                });
+
             modelBuilder.Entity("FacilityManagementService.Domain.Facilities.FacilityInvitation", b =>
                 {
                     b.HasOne("FacilityManagementService.Domain.Users.User", null)
