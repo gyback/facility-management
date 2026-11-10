@@ -676,6 +676,7 @@ acknowledgement flag.
 - [ADR-0014: Use aggregate repositories for commands and projections for queries](0014-use-aggregate-repositories-for-commands-and-projections-for-queries.md)
 - [ADR-0015: Authenticate with Entra External ID and link identities to users by invitation](0015-authenticate-with-entra-external-id-and-invitation-linked-users.md)
 - [ADR-0016: Keep the history of edited and deleted comments](0016-keep-the-history-of-edited-and-deleted-comments.md)
+- [ADR-0019: Make commands idempotent with commit markers](0019-make-commands-idempotent-with-commit-markers.md)
 - IETF, [RFC 9457: Problem Details for HTTP APIs](https://www.rfc-editor.org/rfc/rfc9457)
 - IETF, [The Idempotency-Key HTTP Header Field](https://datatracker.ietf.org/doc/draft-ietf-httpapi-idempotency-key-header/)
 - IETF, [RFC 9111, section 5.5: Warning (obsoleted)](https://www.rfc-editor.org/rfc/rfc9111#section-5.5)
