@@ -9,6 +9,10 @@ namespace FacilityManagementService.Domain.Rules;
 /// </summary>
 public static class RuleCodes
 {
+    public const string AlreadyFacilityMember = "already-facility-member";
+    public const string InvitationExpired = "invitation-expired";
+    public const string LastFacilityAdministrator = "last-facility-administrator";
+
     /// <summary>Every code declared in this class.</summary>
     public static IReadOnlyCollection<string> All { get; } = typeof(RuleCodes)
         .GetFields(BindingFlags.Public | BindingFlags.Static)

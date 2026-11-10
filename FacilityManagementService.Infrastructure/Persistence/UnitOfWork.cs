@@ -58,6 +58,10 @@ internal sealed class UnitOfWork(AppDbContext context) : IUnitOfWork
                 },
                 cancellationToken);
         }
+        catch (DbUpdateConcurrencyException exception)
+        {
+            throw new ConflictException(null, "concurrency", exception);
+        }
         catch (DbUpdateException exception) when (UniqueIndexViolation.TryGetIndexName(exception, out var indexName))
         {
             // Caught outside the strategy, so the strategy still sees the original error and

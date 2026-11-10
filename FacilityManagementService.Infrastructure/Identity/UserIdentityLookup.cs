@@ -1,19 +1,22 @@
 using FacilityManagementService.Application.Users;
 using FacilityManagementService.Domain.Users;
+using FacilityManagementService.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
 
 namespace FacilityManagementService.Infrastructure.Identity;
 
 /// <summary>
-/// Looks up the <see cref="UserId"/> linked to an external identity (ADR-0015). Returns
-/// <see langword="null"/> until the <c>User</c> aggregate and its external-identities table are
-/// added (#45).
+/// Looks up the <see cref="UserId"/> linked to an external identity (ADR-0015).
 /// </summary>
-internal sealed class UserIdentityLookup : IUserIdentityLookup
+internal sealed class UserIdentityLookup(AppDbContext context) : IUserIdentityLookup
 {
-    public Task<UserId?> FindUserIdAsync(
+    public async Task<UserId?> FindUserIdAsync(
         string provider,
         string subject,
         CancellationToken cancellationToken = default) =>
-        Task.FromResult<UserId?>(null);
+        await context.Set<UserExternalIdentity>()
+            .AsNoTracking()
+            .Where(identity => identity.Provider == provider && identity.Subject == subject)
+            .Select(identity => (UserId?)identity.UserId)
+            .FirstOrDefaultAsync(cancellationToken);
 }
-

@@ -33,7 +33,8 @@ internal static class TestHost
         Action<WebApplication> mapEndpoints,
         string environment = "Production",
         IReadOnlyDictionary<string, string?>? settings = null,
-        IUserIdentityLookup? identityLookup = null)
+        IUserIdentityLookup? identityLookup = null,
+        Action<IServiceCollection>? configureServices = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = environment });
         builder.WebHost.UseTestServer();
@@ -42,6 +43,7 @@ internal static class TestHost
         builder.Logging.ClearProviders().AddFakeLogging();
         builder.Services.AddApi();
         builder.Services.AddScoped<IUserIdentityLookup>(_ => identityLookup ?? new DefaultTestUserIdentityLookup());
+        configureServices?.Invoke(builder.Services);
         builder.Services.PostConfigure<JwtBearerOptions>(
             JwtBearerDefaults.AuthenticationScheme,
             TestTokens.ConfigureJwtBearer);

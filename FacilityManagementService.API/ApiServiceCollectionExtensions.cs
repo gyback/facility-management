@@ -32,7 +32,8 @@ internal static class ApiServiceCollectionExtensions
     {
         // camelCase properties and nulls written are the web defaults already.
         services.ConfigureHttpJsonOptions(options =>
-            options.SerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
+            options.SerializerOptions.Converters.Add(
+                new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, allowIntegerValues: false)));
 
         // Binding failures reach the exception handler as malformed-request in every
         // environment, rather than as a bare 400 outside Development.

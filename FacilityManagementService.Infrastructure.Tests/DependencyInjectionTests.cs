@@ -1,7 +1,10 @@
+using FacilityManagementService.Application.Facilities;
 using FacilityManagementService.Application.Persistence;
 using FacilityManagementService.Application.Users;
+using FacilityManagementService.Infrastructure.Facilities;
 using FacilityManagementService.Infrastructure.Identity;
 using FacilityManagementService.Infrastructure.Persistence;
+using FacilityManagementService.Infrastructure.Users;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -29,6 +32,10 @@ public sealed class DependencyInjectionTests
 
         Assert.IsType<UnitOfWork>(scope.ServiceProvider.GetRequiredService<IUnitOfWork>());
         Assert.IsType<ReadDbContext>(scope.ServiceProvider.GetRequiredService<IReadDbContext>());
+        Assert.IsType<UserRepository>(scope.ServiceProvider.GetRequiredService<IUserRepository>());
+        Assert.IsType<FacilityRepository>(scope.ServiceProvider.GetRequiredService<IFacilityRepository>());
+        Assert.IsType<FacilityInvitationRepository>(
+            scope.ServiceProvider.GetRequiredService<IFacilityInvitationRepository>());
         var currentUser = scope.ServiceProvider.GetRequiredService<CurrentUser>();
         Assert.Same(currentUser, scope.ServiceProvider.GetRequiredService<ICurrentUser>());
         Assert.IsType<UserIdentityLookup>(scope.ServiceProvider.GetRequiredService<IUserIdentityLookup>());
